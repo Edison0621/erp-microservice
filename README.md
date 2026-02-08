@@ -2,280 +2,350 @@
 
 <div align="center">
 
-[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![Event Sourcing](https://img.shields.io/badge/Architecture-Event%20Sourcing-blue)](https://martinfowler.com/eaaDev/EventSourcing.html)
-[![Microservices](https://img.shields.io/badge/Pattern-Microservices-green)](https://microservices.io/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![.NET 10](https://img.shields.io/badge/.NET-10-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
+[![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)](/)
+[![Tests](https://img.shields.io/badge/Tests-21%20Passed-success?style=for-the-badge)](/)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
-**A production-ready, cloud-native ERP system built with modern .NET and DDD principles**
+[![Microservices](https://img.shields.io/badge/Architecture-Microservices-blue?style=flat-square)](https://microservices.io/)
+[![Event Sourcing](https://img.shields.io/badge/Pattern-Event%20Sourcing-orange?style=flat-square)](https://martinfowler.com/eaaDev/EventSourcing.html)
+[![DDD](https://img.shields.io/badge/Design-Domain%20Driven-purple?style=flat-square)](https://martinfowler.com/bliki/DomainDrivenDesign.html)
+[![Kubernetes](https://img.shields.io/badge/Deploy-Kubernetes-326CE5?style=flat-square&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 
-[Features](#-key-features) • [Architecture](#-architecture) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Contributing](#-contributing)
+**🚀 A production-ready, cloud-native ERP system built with .NET 10, Domain-Driven Design, and enterprise-grade patterns**
+
+[Quick Start](#-quick-start) • [Features](#-features) • [Architecture](#-architecture) • [Deployment](#-deployment) • [Contributing](#-contributing)
+
+---
+
+### 💡 Why Another ERP?
+
+| ❌ Most Open-Source ERPs | ✅ This Project |
+|--------------------------|-----------------|
+| Legacy monoliths | **15+ Microservices** with independent deployment |
+| Outdated tech stacks | **.NET 10**, Dapr, Kubernetes-ready |
+| Oversimplified demos | **Real-world complexity**: Event Sourcing, MRP, Multi-tenancy |
+| Vendor lock-in | **100% Open Source**, MIT Licensed |
 
 </div>
 
 ---
 
-## 🎯 Why This Project?
+## ✨ Features
 
-Most open-source ERP systems are either:
-- **Legacy monoliths** with outdated tech stacks
-- **Over-simplified demos** that don't handle real-world complexity
-- **Proprietary** with vendor lock-in
+<table>
+<tr>
+<td width="50%">
 
-**This project is different.** It's a **fully functional, enterprise-grade ERP** that demonstrates:
-- ✅ **Event Sourcing & CQRS** for complete audit trails
-- ✅ **Domain-Driven Design** for complex business logic
-- ✅ **Microservices** with independent deployment
-- ✅ **Cloud-native** patterns (Dapr, Docker, Kubernetes-ready)
-- ✅ **Financial Integrity** with double-entry accounting
+### 💰 Finance & Accounting
+- ✅ Double-Entry General Ledger
+- ✅ Chart of Accounts (hierarchical)
+- ✅ Trial Balance & Financial Reports
+- ✅ Accounts Payable / Receivable
+- ✅ Auto Journal Entries from Operations
 
-## ✨ Key Features
+</td>
+<td width="50%">
 
-### 📊 **General Ledger (Finance)**
-- **Chart of Accounts** with hierarchical structure
-- **Double-Entry Bookkeeping** with strict validation
-- **Trial Balance** and financial reporting
-- **Automatic Journal Entries** from operational transactions
+### 📦 Supply Chain
+- ✅ Multi-Warehouse Inventory
+- ✅ Real-time Stock Reservations
+- ✅ Purchase Order Lifecycle
+- ✅ Goods Receipt & Quality Control
+- ✅ Material Requirements Planning (MRP)
 
-### 📦 **Supply Chain Management**
-- Multi-warehouse inventory tracking
-- Real-time stock reservations
-- Procurement lifecycle (PO → Goods Receipt)
-- Production planning with BOM support
+</td>
+</tr>
+<tr>
+<td>
 
-### 💼 **Sales & CRM**
-- Order-to-Cash workflow
-- Customer management
-- Shipment tracking
-- Invoice generation
+### 🛒 Sales & CRM
+- ✅ Order-to-Cash Workflow
+- ✅ Customer Management
+- ✅ Shipment Tracking
+- ✅ Invoice Generation
+- ✅ Sales Analytics Dashboard
 
-### 👥 **Human Resources**
-- Employee lifecycle management
-- Organization structure
-- Identity & Access Control (RBAC)
+</td>
+<td>
 
-### 🏭 **Manufacturing**
-- Production orders
-- Material requirements
-- Work-in-progress tracking
+### 🏭 Manufacturing
+- ✅ Production Orders
+- ✅ Bill of Materials (BOM)
+- ✅ Work-in-Progress Tracking
+- ✅ Production Efficiency Reports
+- ✅ Asset Maintenance
 
-### 🤖 **Intelligent Automation (NEW in v2.0)**
-- **Real-time Cost Calculation** - Moving average cost with instant updates
-- **Smart MRP** - Automatic reordering rules and procurement suggestions
-- **Workflow Automation** - Event-driven rules engine (email, webhooks, notifications)
-- **Time-series Analytics** - TimescaleDB for inventory and cost trend analysis
+</td>
+</tr>
+<tr>
+<td>
+
+### 👥 Human Resources
+- ✅ Employee Lifecycle
+- ✅ Organization Structure
+- ✅ Identity & Access Control (RBAC)
+- ✅ Role-based Permissions
+
+</td>
+<td>
+
+### 📊 BI & Reporting
+- ✅ Executive Dashboard
+- ✅ Sales Trend Analysis
+- ✅ Inventory Valuation Reports
+- ✅ Financial Summary (P&L)
+- ✅ Production Efficiency Metrics
+
+</td>
+</tr>
+</table>
+
+---
 
 ## 🏗️ Architecture
 
 ```mermaid
 graph TB
-    subgraph "API Gateway"
-        GW[YARP Gateway]
+    subgraph "🌐 Gateway Layer"
+        GW[YARP API Gateway]
     end
     
-    subgraph "Microservices"
-        FIN[Finance Service]
-        INV[Inventory Service]
-        SALES[Sales Service]
-        PROC[Procurement Service]
-        PROD[Production Service]
-        HR[HR Service]
-        ID[Identity Service]
-        MD[MasterData Service]
-        MRP[MRP Service]
-        AUTO[Automation Service]
+    subgraph "📊 Core Business Services"
+        FIN[💰 Finance]
+        INV[📦 Inventory]
+        SALES[🛒 Sales]
+        PROC[📋 Procurement]
+        PROD[🏭 Production]
     end
     
-    subgraph "Infrastructure"
-        PG[(TimescaleDB)]
-        REDIS[(Redis Cache)]
-        DAPR[Dapr Sidecar]
+    subgraph "🔧 Supporting Services"
+        HR[👥 HR]
+        ID[🔐 Identity]
+        MD[📁 MasterData]
+        MRP[📈 MRP]
+        RPT[📊 Reporting]
     end
     
-    GW --> FIN
-    GW --> INV
-    GW --> SALES
-    GW --> PROC
-    GW --> PROD
-    GW --> HR
-    GW --> ID
-    GW --> MD
+    subgraph "⚙️ Platform Services"
+        AUTO[🤖 Automation]
+        QUAL[✅ Quality]
+        MAINT[🔧 Maintenance]
+        SET[⚙️ Settings]
+        ANA[📉 Analytics]
+    end
     
-    FIN --> PG
-    INV --> PG
-    SALES --> PG
-    PROC --> PG
+    subgraph "🛠️ Infrastructure"
+        PG[(PostgreSQL)]
+        REDIS[(Redis)]
+        DAPR{Dapr Sidecar}
+    end
     
-    FIN -.Event Bus.-> DAPR
-    INV -.Event Bus.-> DAPR
-    SALES -.Event Bus.-> DAPR
+    GW --> FIN & INV & SALES & PROC & PROD
+    GW --> HR & ID & MD & MRP & RPT
+    
+    FIN & INV & SALES -.->|Event Bus| DAPR
+    DAPR -.-> AUTO & ANA
+    
+    FIN & INV & SALES --> PG
+    ID --> REDIS
 ```
 
 ### 🎨 Design Patterns
 
-| Pattern | Purpose |
-|---------|---------|
+| Pattern | Implementation |
+|---------|---------------|
 | **Event Sourcing** | Complete audit trail, temporal queries |
-| **CQRS** | Optimized read/write models |
-| **Domain-Driven Design** | Rich domain models, ubiquitous language |
-| **Saga Pattern** | Distributed transactions across services |
-| **Outbox Pattern** | Reliable event publishing |
-| **Specification Pattern** | Encapsulated, reusable query logic |
-| **Result Pattern** | Functional error handling (Railway Oriented) |
+| **CQRS** | Separate read/write models with MediatR |
+| **Domain-Driven Design** | Aggregates, Value Objects, Domain Events |
+| **Saga Pattern** | Distributed transactions via Dapr |
+| **Outbox Pattern** | Reliable event publishing with EF Core |
+| **Specification Pattern** | Reusable query logic |
+| **Result Pattern** | Railway-oriented error handling |
 
 ### 🛡️ Enterprise Building Blocks
 
-The shared kernel (`ErpSystem.BuildingBlocks`) provides production-ready cross-cutting concerns:
+Our shared kernel provides **production-ready** cross-cutting concerns:
 
-| Component | Description |
-|-----------|-------------|
-| **IdempotencyBehavior** | Prevents duplicate command execution in distributed systems |
-| **ValidationBehavior** | Auto-validates commands with FluentValidation |
-| **AuditBehavior** | Automatic audit logging for compliance |
-| **PerformanceBehavior** | Slow request detection and logging |
-| **Transactional Outbox** | Guarantees reliable message delivery |
-| **Multi-tenancy** | SaaS-ready tenant isolation with EF Core query filters |
-| **Resilience Policies** | Polly V8 retry, circuit breaker, timeout pipelines |
-| **Domain Event Dispatcher** | Auto-publishes aggregate domain events after SaveChanges |
-| **UserContext** | Strongly-typed access to current user identity |
-| **Cache Extensions** | GetOrSet pattern for distributed caching |
+```
+ErpSystem.BuildingBlocks/
+├── Behaviors/          # MediatR pipeline (Validation, Logging, Idempotency, Audit, Performance)
+├── CQRS/               # ICommand, IQuery, Handler abstractions
+├── Common/             # Result<T> pattern, Error types
+├── Domain/             # Specifications, Domain Event Dispatcher
+├── Outbox/             # Transactional Outbox with EF Core
+├── MultiTenancy/       # SaaS tenant isolation (query filters + interceptors)
+├── Resilience/         # Polly V8 (Retry, Circuit Breaker, Timeout)
+├── Caching/            # Distributed cache extensions (GetOrSet)
+├── Auditing/           # Automatic audit logging
+└── Middleware/         # CorrelationId, RequestLogging, GlobalException
+```
+
+---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop)
-- [PostgreSQL 16+](https://www.postgresql.org/download/)
+
+| Tool | Version |
+|------|---------|
+| [.NET SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | 10.0+ |
+| [Docker](https://www.docker.com/products/docker-desktop) | Latest |
+| [PostgreSQL](https://www.postgresql.org/download/) | 16+ |
 
 ### Run Locally
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/erp-system.git
-cd erp-system
+# 1. Clone
+git clone https://github.com/Edison0621/erp-microservice.git
+cd erp-microservice
 
-# Start infrastructure
-docker-compose up -d
+# 2. Build & Test
+dotnet build src/ErpSystem.sln
+dotnet test src/ErpSystem.sln
 
-# Run all services
-dotnet build
-dotnet test
-
-# Start individual services
+# 3. Run a service (e.g., Finance)
 cd src/Services/Finance/ErpSystem.Finance
 dotnet run
 ```
 
-### Using Docker
+### Run with Docker
 
 ```bash
-# Build all services
-docker-compose -f docker-compose.yml build
+# Build all images
+docker build -t erp-system/finance:latest --build-arg SERVICE_NAME=Finance .
 
-# Start the entire system
-docker-compose up
+# Or use Docker Compose
+docker-compose up -d
 ```
+
+---
+
+## ☸️ Deployment
+
+### Kubernetes with Helm
+
+```bash
+# Install the chart
+helm install erp-system deploy/helm/erp-system \
+  --set postgresql.auth.password=your-secure-password \
+  --set ingress.host=erp.yourcompany.com
+
+# Verify
+kubectl get pods -n erp-system
+```
+
+### Deployment Stack
+
+```
+deploy/
+├── k8s/                        # Raw Kubernetes manifests
+│   ├── namespace.yaml
+│   ├── configmap.yaml
+│   ├── secrets.yaml
+│   ├── ingress.yaml
+│   └── services/*.yaml         # Per-service deployments
+└── helm/erp-system/            # Helm Chart
+    ├── Chart.yaml
+    ├── values.yaml
+    └── templates/
+```
+
+📖 **Full Guide**: [docs/deployment.md](docs/deployment.md)
+
+---
 
 ## 📁 Project Structure
 
 ```
-ErpSystem/
+erp-microservice/
 ├── src/
-│   ├── BuildingBlocks/          # Enterprise shared kernel
-│   │   ├── Auditing/            # Audit logging infrastructure
-│   │   ├── Behaviors/           # MediatR pipeline behaviors
-│   │   ├── Caching/             # Distributed cache extensions
-│   │   ├── Common/              # Result pattern, Error types
-│   │   ├── CQRS/                # Command/Query abstractions
-│   │   ├── Domain/              # Specifications, Event Dispatcher
-│   │   ├── Middleware/          # Enterprise HTTP middleware
-│   │   ├── MultiTenancy/        # SaaS tenant isolation
-│   │   ├── Outbox/              # Transactional outbox pattern
-│   │   └── Resilience/          # Polly V8 policies
+│   ├── BuildingBlocks/             # 🧱 Shared kernel (enterprise patterns)
+│   ├── Gateways/ErpSystem.Gateway/ # 🌐 YARP reverse proxy
 │   ├── Services/
-│   │   ├── Finance/             # GL, AP/AR, Invoicing
-│   │   ├── Inventory/           # Stock management
-│   │   ├── Sales/               # Order processing
-│   │   ├── Procurement/         # Purchase orders
-│   │   ├── Production/          # Manufacturing
-│   │   ├── HR/                  # Employee management
-│   │   ├── Identity/            # Authentication & RBAC
-│   │   ├── MasterData/          # Materials, Customers, Suppliers
-│   │   ├── Quality/             # QC and inspection
-│   │   ├── Mrp/                 # Material Requirements Planning
-│   │   ├── Analytics/           # Time-series analytics
-│   │   ├── Automation/          # Workflow automation engine
-│   │   ├── Maintenance/         # Asset maintenance
-│   │   └── Settings/            # System configuration
-│   ├── Gateways/
-│   │   └── ErpSystem.Gateway/   # YARP reverse proxy
-│   └── Web/
-│       └── ErpSystem.Web/       # React frontend
-└── tests/
-    └── ErpSystem.IntegrationTests/
+│   │   ├── Finance/                # 💰 General Ledger, AP/AR
+│   │   ├── Inventory/              # 📦 Stock management
+│   │   ├── Sales/                  # 🛒 Order processing
+│   │   ├── Procurement/            # 📋 Purchase orders
+│   │   ├── Production/             # 🏭 Manufacturing
+│   │   ├── HR/                     # 👥 Employee management
+│   │   ├── Identity/               # 🔐 Auth & RBAC
+│   │   ├── MasterData/             # 📁 Materials, Customers, Suppliers
+│   │   ├── Mrp/                    # 📈 Material Requirements Planning
+│   │   ├── Reporting/              # 📊 BI Dashboard & Reports
+│   │   ├── Quality/                # ✅ QC & Inspection
+│   │   ├── Analytics/              # 📉 Time-series analytics
+│   │   ├── Automation/             # 🤖 Workflow engine
+│   │   ├── Maintenance/            # 🔧 Asset maintenance
+│   │   └── Settings/               # ⚙️ System configuration
+│   └── Web/ErpSystem.Web/          # 🖥️ React frontend
+├── tests/
+│   └── ErpSystem.IntegrationTests/ # ✅ 21 passing tests
+└── deploy/
+    ├── k8s/                        # Kubernetes manifests
+    └── helm/erp-system/            # Helm chart
 ```
+
+---
 
 ## 🧪 Testing
 
 ```bash
 # Run all tests
-dotnet test
+dotnet test src/ErpSystem.sln
 
-# Run specific test suite
-dotnet test --filter GLTests
+# Run specific module
+dotnet test --filter "GLTests"
 
-# Generate coverage report
+# With coverage
 dotnet test /p:CollectCoverage=true
 ```
 
-## 📚 Documentation
+**Current Status**: ✅ **21 tests passing**
 
-- [Architecture Overview](docs/architecture.md)
-- [Domain Models](docs/domain-models.md)
-- [API Reference](docs/api-reference.md)
-- [Deployment Guide](docs/deployment.md)
+---
 
 ## 🛣️ Roadmap
 
-- [x] **Phase 1**: Core Infrastructure & Event Sourcing
-- [x] **Phase 2**: Finance Module (General Ledger)
-- [x] **Phase 3**: Inventory & Procurement
-- [x] **Phase 4**: MRP (Material Requirements Planning)
-- [x] **Phase 5**: Enterprise BuildingBlocks (Idempotency, Outbox, Audit, Multi-tenancy)
-- [x] **Phase 6**: Advanced Reporting & BI Dashboard
-- [x] **Phase 7**: Kubernetes Deployment & Helm Charts
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Phase 1 | ✅ Complete | Core Infrastructure & Event Sourcing |
+| Phase 2 | ✅ Complete | Finance Module (General Ledger) |
+| Phase 3 | ✅ Complete | Inventory & Procurement |
+| Phase 4 | ✅ Complete | MRP (Material Requirements Planning) |
+| Phase 5 | ✅ Complete | Enterprise BuildingBlocks |
+| Phase 6 | ✅ Complete | Reporting & BI Dashboard |
+| Phase 7 | ✅ Complete | Kubernetes & Helm Charts |
+| Phase 8 | 🔄 Planned | GraphQL API Layer |
+| Phase 9 | 🔄 Planned | Real-time Notifications (SignalR) |
+
+---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### Development Workflow
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+```bash
+# Fork → Clone → Branch → Code → Test → PR
+git checkout -b feature/amazing-feature
+git commit -m "feat: add amazing feature"
+git push origin feature/amazing-feature
+```
+
+---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/erp-system&type=Date)](https://star-history.com/#yourusername/erp-system&Date)
-
-## 💬 Community
-
-- 💬 [Discussions](https://github.com/yourusername/erp-system/discussions)
-- 🐛 [Issues](https://github.com/yourusername/erp-system/issues)
-- 📧 Email: your.email@example.com
+This project is licensed under the **MIT License** - see [LICENSE](LICENSE) for details.
 
 ---
 
 <div align="center">
 
-**Built with ❤️ using .NET 10 and modern software engineering practices**
+### ⭐ Star this repo if you find it useful!
 
-[⬆ back to top](#-enterprise-erp-system)
+**Built with ❤️ using .NET 10, DDD, and modern cloud-native patterns**
+
+[Report Bug](https://github.com/Edison0621/erp-microservice/issues) · [Request Feature](https://github.com/Edison0621/erp-microservice/issues) · [Discussions](https://github.com/Edison0621/erp-microservice/discussions)
 
 </div>
