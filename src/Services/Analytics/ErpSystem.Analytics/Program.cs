@@ -4,11 +4,13 @@ using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Analytics.Domain;
 using ErpSystem.Analytics.Infrastructure;
 using ErpSystem.Analytics.Application;
+using ErpSystem.Analytics.Infrastructure.BackgroundJobs;
 using MediatR;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddSignalR();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -37,7 +39,9 @@ builder.Services.AddScoped<IEventStore>(sp =>
 // Register forecasting service
 builder.Services.AddScoped<DemandForecastEngine>();
 builder.Services.AddScoped<TimescaleDataExtractor>();
+
 builder.Services.AddScoped<ForecastingAppService>();
+builder.Services.AddHostedService<AnalyticsNotifier>();
 
 var app = builder.Build();
 
@@ -50,6 +54,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<ErpSystem.Analytics.API.Hubs.AnalyticsHub>("/hubs/analytics");
 
 // Ensure databases created
 using (var scope = app.Services.CreateScope())

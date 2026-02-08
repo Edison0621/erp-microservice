@@ -3,6 +3,7 @@ using ErpSystem.Inventory.Infrastructure;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Inventory.Domain;
+using ErpSystem.Inventory.Domain.Services;
 using MediatR;
 
 namespace ErpSystem.Inventory;
@@ -42,6 +43,9 @@ public class Program
 
         // MediatR
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(ErpSystem.Inventory.Application.ProcurementIntegrationEventHandler).Assembly));
+
+        // Services
+        builder.Services.AddScoped<IInventoryForecastService, InventoryForecastService>();
 
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();

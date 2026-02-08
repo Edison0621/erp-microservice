@@ -1,4 +1,9 @@
 using ErpSystem.BuildingBlocks.EventBus;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection;
+using Polly;
+using Polly.Retry;
+using Polly.CircuitBreaker; // Required for CircuitBreakerStrategyOptions
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,6 +25,47 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    // .AddServiceDiscoveryDestinationResolver(); // Service Discovery package not installed yet
+
+// =====================================================================================
+// ENTERPRISE RESILIENCE (Pro Level)
+// =====================================================================================
+
+// Define a standardized resilience pipeline for all outgoing HTTP calls
+builder.Services.AddResiliencePipeline("default", pipeline =>
+{
+    // 1. Retry with Exponential Backoff + Jitter
+    // Handles transient failures gracefully without thundering herd problems
+    pipeline.AddRetry(new Polly.Retry.RetryStrategyOptions
+    {
+        ShouldHandle = new PredicateBuilder().Handle<Exception>(),
+        Delay = TimeSpan.FromSeconds(2),
+        MaxRetryAttempts = 3,
+        BackoffType = DelayBackoffType.Exponential,
+        UseJitter = true
+    });
+
+    // 2. Circuit Breaker
+    // Prevents cascading failures by stopping requests when downstream is unhealthy
+    // Breaks if > 50% failures in 30s window
+    pipeline.AddCircuitBreaker(new Polly.CircuitBreaker.CircuitBreakerStrategyOptions
+    {
+        FailureRatio = 0.5,
+        SamplingDuration = TimeSpan.FromSeconds(30),
+        MinimumThroughput = 20,
+        BreakDuration = TimeSpan.FromSeconds(30)
+    });
+
+    // 3. Timeout
+    // Fail fast to release resources
+    pipeline.AddTimeout(TimeSpan.FromSeconds(10));
+});
+
+// Configure Rate Limiting to protect backend services from overload
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 builder.Services.AddHealthChecks();
 

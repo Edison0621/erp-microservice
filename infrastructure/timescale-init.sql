@@ -82,3 +82,58 @@ SELECT add_retention_policy('cost_movements_ts', INTERVAL '2 years', if_not_exis
 COMMENT ON TABLE inventory_transactions_ts IS 'Time-series optimized table for inventory transaction analytics';
 COMMENT ON TABLE cost_movements_ts IS 'Time-series optimized table for financial cost movement tracking';
 COMMENT ON MATERIALIZED VIEW daily_inventory_summary IS 'Continuous aggregate providing daily inventory movement summaries';
+
+-- =====================================================================================
+-- ADVANCED FEATURES (Pro Level)
+-- =====================================================================================
+
+-- 1. NATIVE COMPRESSION
+-- Enable columnar compression to reduce storage footprint by ~90% for historical data
+-- Segment by tenant/material to optimize analytical queries
+ALTER TABLE inventory_transactions_ts SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'tenant_id, material_id, warehouse_id',
+    timescaledb.compress_orderby = 'time DESC'
+);
+
+-- Automated policy: Compress chunks older than 7 days
+SELECT add_compression_policy('inventory_transactions_ts', INTERVAL '7 days', if_not_exists => TRUE);
+
+-- 2. GAP-FILLING & ANALYTICAL VIEWS
+-- Specialized view for forecasting algorithms that requires continuous time-series
+-- Uses 'locf' (Last Observation Carried Forward) and linear interpolation
+CREATE OR REPLACE VIEW inventory_gapfill_analytics AS
+SELECT
+    time_bucket_gapfill('1 day', time) as day,
+    material_id,
+    warehouse_id,
+    count(*) as transaction_volume,
+    locf(avg(quantity_change)) as smooth_avg_change,
+    interpolate(sum(quantity_change)) as interpolated_net_change
+FROM inventory_transactions_ts
+WHERE time > NOW() - INTERVAL '90 days'
+GROUP BY day, material_id, warehouse_id;
+
+-- 3. STATISTICAL AGGREGATES (Requires TimescaleDB Toolkit)
+-- Pre-calculate percentiles and statistical moments for anomaly detection
+CREATE MATERIALIZED VIEW IF NOT EXISTS inventory_advanced_stats
+WITH (timescaledb.continuous) AS
+SELECT
+    time_bucket('1 hour', time) AS hour,
+    material_id,
+    -- Capture the entire distribution for later quantile analysis
+    percentile_agg(quantity_change) as quantity_distribution,
+    -- Capture rolling stats (mean, stddev, etc.) in a single roll-up
+    stats_agg(quantity_change) as rolling_stats
+FROM inventory_transactions_ts
+GROUP BY hour, material_id;
+
+-- Refresh stats every hour
+SELECT add_continuous_aggregate_policy('inventory_advanced_stats',
+    start_offset => INTERVAL '3 days',
+    end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour',
+    if_not_exists => TRUE);
+
+COMMENT ON VIEW inventory_gapfill_analytics IS 'Gap-filled analytics view for ML forecasting models';
+COMMENT ON MATERIALIZED VIEW inventory_advanced_stats IS 'Advanced statistical aggregates for anomaly detection using TimescaleDB Toolkit';

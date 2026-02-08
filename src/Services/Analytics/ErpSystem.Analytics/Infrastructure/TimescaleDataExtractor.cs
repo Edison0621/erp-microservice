@@ -87,4 +87,60 @@ public class TimescaleDataExtractor
 
         return result;
     }
+    /// <summary>
+    /// Extracts real-time advanced statistics from TimescaleDB aggregates
+    /// </summary>
+    public async Task<List<MaterialStatsDto>> GetRealTimeStats()
+    {
+        var result = new List<MaterialStatsDto>();
+
+        using var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+
+        try
+        {
+             // Use TimescaleDB Toolkit functions to access the aggregates
+            using var cmd = new NpgsqlCommand(
+                @"SELECT 
+                    hour,
+                    material_id,
+                    approx_percentile(quantity_distribution, 0.5) as median_change,
+                    average(rolling_stats) as avg_change,
+                    stddev(rolling_stats) as stddev_change
+                  FROM inventory_advanced_stats
+                  WHERE hour > NOW() - INTERVAL '24 hours'
+                  ORDER BY hour DESC
+                  LIMIT 50;", conn); // Limit to top recent stats
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                result.Add(new MaterialStatsDto
+                {
+                    Hour = reader.GetDateTime(0),
+                    MaterialId = reader.IsDBNull(1) ? "Unknown" : reader.GetString(1),
+                    MedianChange = reader.IsDBNull(2) ? 0 : reader.GetDouble(2),
+                    AverageChange = reader.IsDBNull(3) ? 0 : reader.GetDouble(3),
+                    StdDevChange = reader.IsDBNull(4) ? 0 : reader.GetDouble(4)
+                });
+            }
+        }
+        catch (PostgresException ex)
+        {
+            // Log or handle if toolkit is not installed/enabled, fallback or return empty
+            // For now, simpler error handling:
+            Console.WriteLine($"Error fetching stats: {ex.Message}");
+        }
+
+        return result;
+    }
+}
+
+public class MaterialStatsDto
+{
+    public DateTime Hour { get; set; }
+    public string MaterialId { get; set; } = string.Empty;
+    public double MedianChange { get; set; }
+    public double AverageChange { get; set; }
+    public double StdDevChange { get; set; }
 }

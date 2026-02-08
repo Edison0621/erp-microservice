@@ -11,6 +11,9 @@
 [![Event Sourcing](https://img.shields.io/badge/Pattern-Event%20Sourcing-orange?style=flat-square)](https://martinfowler.com/eaaDev/EventSourcing.html)
 [![DDD](https://img.shields.io/badge/Design-Domain%20Driven-purple?style=flat-square)](https://martinfowler.com/bliki/DomainDrivenDesign.html)
 [![Kubernetes](https://img.shields.io/badge/Deploy-Kubernetes-326CE5?style=flat-square&logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![SignalR](https://img.shields.io/badge/Real--time-SignalR-blueviolet?style=flat-square)](https://dotnet.microsoft.com/apps/aspnet/signalr)
+[![ML.NET](https://img.shields.io/badge/AI-ML.NET-orange?style=flat-square)](https://dotnet.microsoft.com/apps/machinelearning-ai/ml-dotnet)
+[![TimescaleDB](https://img.shields.io/badge/Database-TimescaleDB-black?style=flat-square&logo=postgresql)](https://www.timescale.com/)
 
 **🚀 A production-ready, cloud-native ERP system built with .NET 10, Domain-Driven Design, and enterprise-grade patterns**
 
@@ -103,6 +106,23 @@
 
 </td>
 </tr>
+<tr>
+<td colspan="2">
+
+### 📈 AI & Real-time Analytics (New!)
+- ✅ **Real-time Live Dashboards** (SignalR/WebSockets)
+  - Live inventory movements
+  - Flash sales alerts
+  - System health monitoring
+- ✅ **AI-Driven Demand Forecasting** (ML.NET)
+  - Singular Spectrum Analysis (SSA) for seasonality detection
+  - Confidence intervals (95%)
+- ✅ **High-Performance Time-Series** (TimescaleDB)
+  - Cash flow trending
+  - IoT sensor data ingestion (simulated)
+
+</td>
+</tr>
 </table>
 
 ---
@@ -145,17 +165,20 @@ graph TB
     
     subgraph "🛠️ Infrastructure"
         PG[(PostgreSQL)]
+        TSDB[(TimescaleDB)]
         REDIS[(Redis)]
         DAPR{Dapr Sidecar}
     end
     
     GW --> FIN & INV & SALES & PROC & PROD & CRM & PROJ
     GW --> HR & PAY & ASSET & ID & MD & MRP & RPT
+    GW -.->|SignalR / WebSocket| ANA
     
     FIN & INV & SALES & CRM & PROJ -.->|Event Bus| DAPR
     DAPR -.-> AUTO & ANA
     
     FIN & INV & SALES --> PG
+    ANA --> TSDB
     ID --> REDIS
 ```
 
@@ -332,7 +355,8 @@ dotnet test /p:CollectCoverage=true
 | Phase 9 | ✅ Complete | Project Management & Timesheets |
 | Phase 10 | ✅ Complete | Payroll & Compensation |
 | Phase 11 | ✅ Complete | Asset Lifecycle Management |
-| Phase 12 | 🔄 Planned | Real-time Notifications (SignalR) |
+| Phase 12 | ✅ Complete | Real-time Notifications (SignalR) |
+| Phase 13 | ✅ Complete | AI-Driven Demand Forecasting (ML.NET) |
 
 ---
 
