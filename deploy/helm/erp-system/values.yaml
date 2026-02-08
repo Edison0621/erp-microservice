@@ -1,0 +1,126 @@
+# ERP System Helm Values
+# Override these values for your environment
+
+# Global settings
+global:
+  imageRegistry: "docker.io"
+  imagePullSecrets: []
+  namespace: erp-system
+
+# Common service configuration
+common:
+  replicaCount: 2
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Service-specific overrides
+services:
+  finance:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: erp-system/finance
+      tag: latest
+      pullPolicy: IfNotPresent
+    
+  inventory:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: erp-system/inventory
+      tag: latest
+      pullPolicy: IfNotPresent
+    
+  sales:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: erp-system/sales
+      tag: latest
+      pullPolicy: IfNotPresent
+    
+  procurement:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: erp-system/procurement
+      tag: latest
+      pullPolicy: IfNotPresent
+    
+  production:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: erp-system/production
+      tag: latest
+      pullPolicy: IfNotPresent
+    
+  identity:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: erp-system/identity
+      tag: latest
+      pullPolicy: IfNotPresent
+    
+  reporting:
+    enabled: true
+    replicaCount: 1
+    image:
+      repository: erp-system/reporting
+      tag: latest
+      pullPolicy: IfNotPresent
+    
+  gateway:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: erp-system/gateway
+      tag: latest
+      pullPolicy: IfNotPresent
+    service:
+      type: LoadBalancer
+      port: 80
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  host: erp.example.com
+  tls:
+    enabled: false
+    secretName: erp-tls
+
+# Database configuration
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: ""  # Set via --set or secrets
+    database: erpdb
+  primary:
+    persistence:
+      size: 10Gi
+
+# Redis configuration
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+
+# Dapr configuration
+dapr:
+  enabled: true
+  components:
+    stateStore: redis
+    pubSub: redis
+
+# Environment variables
+env:
+  ASPNETCORE_ENVIRONMENT: Production

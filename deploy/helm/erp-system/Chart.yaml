@@ -1,0 +1,26 @@
+apiVersion: v2
+name: erp-system
+description: Enterprise ERP System Helm Chart
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - erp
+  - microservices
+  - dotnet
+  - dapr
+
+maintainers:
+  - name: ERP Team
+    email: team@example.com
+
+dependencies:
+  - name: redis
+    version: "17.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: redis.enabled
+  - name: postgresql
+    version: "13.x.x"
+    repository: https://charts.bitnami.com/bitnami
+    condition: postgresql.enabled

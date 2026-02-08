@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: erp-config
+  namespace: erp-system
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  DAPR_HTTP_PORT: "3500"
+  DAPR_GRPC_PORT: "50001"
+  
+  # Database connection (use secrets for password in production)
+  ConnectionStrings__DefaultConnection: "Host=postgres-service;Port=5432;Database=erpdb;Username=postgres"
+  
+  # Redis cache
+  Redis__Configuration: "redis-service:6379"
+  
+  # Service URLs (internal K8s DNS)
+  ServiceUrls__Finance: "http://finance-service"
+  ServiceUrls__Inventory: "http://inventory-service"
+  ServiceUrls__Sales: "http://sales-service"
+  ServiceUrls__Procurement: "http://procurement-service"
+  ServiceUrls__Production: "http://production-service"
+  ServiceUrls__Identity: "http://identity-service"
+  ServiceUrls__Reporting: "http://reporting-service"

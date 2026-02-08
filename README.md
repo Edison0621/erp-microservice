@@ -120,6 +120,25 @@ graph TB
 | **Domain-Driven Design** | Rich domain models, ubiquitous language |
 | **Saga Pattern** | Distributed transactions across services |
 | **Outbox Pattern** | Reliable event publishing |
+| **Specification Pattern** | Encapsulated, reusable query logic |
+| **Result Pattern** | Functional error handling (Railway Oriented) |
+
+### 🛡️ Enterprise Building Blocks
+
+The shared kernel (`ErpSystem.BuildingBlocks`) provides production-ready cross-cutting concerns:
+
+| Component | Description |
+|-----------|-------------|
+| **IdempotencyBehavior** | Prevents duplicate command execution in distributed systems |
+| **ValidationBehavior** | Auto-validates commands with FluentValidation |
+| **AuditBehavior** | Automatic audit logging for compliance |
+| **PerformanceBehavior** | Slow request detection and logging |
+| **Transactional Outbox** | Guarantees reliable message delivery |
+| **Multi-tenancy** | SaaS-ready tenant isolation with EF Core query filters |
+| **Resilience Policies** | Polly V8 retry, circuit breaker, timeout pipelines |
+| **Domain Event Dispatcher** | Auto-publishes aggregate domain events after SaveChanges |
+| **UserContext** | Strongly-typed access to current user identity |
+| **Cache Extensions** | GetOrSet pattern for distributed caching |
 
 ## 🚀 Quick Start
 
@@ -162,7 +181,17 @@ docker-compose up
 ```
 ErpSystem/
 ├── src/
-│   ├── BuildingBlocks/          # Shared kernel (DDD, Event Sourcing)
+│   ├── BuildingBlocks/          # Enterprise shared kernel
+│   │   ├── Auditing/            # Audit logging infrastructure
+│   │   ├── Behaviors/           # MediatR pipeline behaviors
+│   │   ├── Caching/             # Distributed cache extensions
+│   │   ├── Common/              # Result pattern, Error types
+│   │   ├── CQRS/                # Command/Query abstractions
+│   │   ├── Domain/              # Specifications, Event Dispatcher
+│   │   ├── Middleware/          # Enterprise HTTP middleware
+│   │   ├── MultiTenancy/        # SaaS tenant isolation
+│   │   ├── Outbox/              # Transactional outbox pattern
+│   │   └── Resilience/          # Polly V8 policies
 │   ├── Services/
 │   │   ├── Finance/             # GL, AP/AR, Invoicing
 │   │   ├── Inventory/           # Stock management
@@ -171,7 +200,13 @@ ErpSystem/
 │   │   ├── Production/          # Manufacturing
 │   │   ├── HR/                  # Employee management
 │   │   ├── Identity/            # Authentication & RBAC
-│   │   └── MasterData/          # Materials, Customers, Suppliers
+│   │   ├── MasterData/          # Materials, Customers, Suppliers
+│   │   ├── Quality/             # QC and inspection
+│   │   ├── Mrp/                 # Material Requirements Planning
+│   │   ├── Analytics/           # Time-series analytics
+│   │   ├── Automation/          # Workflow automation engine
+│   │   ├── Maintenance/         # Asset maintenance
+│   │   └── Settings/            # System configuration
 │   ├── Gateways/
 │   │   └── ErpSystem.Gateway/   # YARP reverse proxy
 │   └── Web/
@@ -205,9 +240,10 @@ dotnet test /p:CollectCoverage=true
 - [x] **Phase 1**: Core Infrastructure & Event Sourcing
 - [x] **Phase 2**: Finance Module (General Ledger)
 - [x] **Phase 3**: Inventory & Procurement
-- [ ] **Phase 4**: MRP (Material Requirements Planning)
-- [ ] **Phase 5**: Advanced Reporting & BI
-- [ ] **Phase 6**: Multi-tenancy Support
+- [x] **Phase 4**: MRP (Material Requirements Planning)
+- [x] **Phase 5**: Enterprise BuildingBlocks (Idempotency, Outbox, Audit, Multi-tenancy)
+- [x] **Phase 6**: Advanced Reporting & BI Dashboard
+- [x] **Phase 7**: Kubernetes Deployment & Helm Charts
 
 ## 🤝 Contributing
 
