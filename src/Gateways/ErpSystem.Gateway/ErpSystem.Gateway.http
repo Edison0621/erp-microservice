@@ -1,0 +1,6 @@
+@ErpSystem.Gateway_HostAddress = http://localhost:5072
+
+GET {{ErpSystem.Gateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

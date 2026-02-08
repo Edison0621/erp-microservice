@@ -1,0 +1,8 @@
+CREATE DATABASE identitydb;
+CREATE DATABASE masterdatadb;
+CREATE DATABASE procurementdb;
+CREATE DATABASE financedb;
+CREATE DATABASE inventorydb;
+CREATE DATABASE salesdb;
+CREATE DATABASE productiondb;
+CREATE DATABASE hrdb;

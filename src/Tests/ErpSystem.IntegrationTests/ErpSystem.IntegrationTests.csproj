@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentAssertions" Version="8.0.0" />
+    <PackageReference Include=" coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Dapr.AspNetCore" Version="1.16.1" />
+    <PackageReference Include="MediatR" Version="14.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Services\Analytics\ErpSystem.Analytics\ErpSystem.Analytics.csproj" />
+    <ProjectReference Include="..\..\Services\Mrp\ErpSystem.Mrp\ErpSystem.Mrp.csproj" />
+    <ProjectReference Include="..\..\Services\Procurement\ErpSystem.Procurement\ErpSystem.Procurement.csproj" />
+    <ProjectReference Include="..\..\Services\Inventory\ErpSystem.Inventory\ErpSystem.Inventory.csproj" />
+    <ProjectReference Include="..\..\Services\Quality\ErpSystem.Quality\ErpSystem.Quality.csproj" />
+    <ProjectReference Include="..\..\Services\Sales\ErpSystem.Sales\ErpSystem.Sales.csproj" />
+    <ProjectReference Include="..\..\Services\Finance\ErpSystem.Finance\ErpSystem.Finance.csproj" />
+    <ProjectReference Include="..\..\Services\Production\ErpSystem.Production\ErpSystem.Production.csproj" />
+    <ProjectReference Include="..\..\Services\HR\ErpSystem.HR\ErpSystem.HR.csproj" />
+    <ProjectReference Include="..\..\Services\Identity\ErpSystem.Identity\ErpSystem.Identity.csproj" />
+    <ProjectReference Include="..\..\Services\MasterData\ErpSystem.MasterData\ErpSystem.MasterData.csproj" />
+    <ProjectReference Include="..\..\Services\Mrp\ErpSystem.Mrp\ErpSystem.Mrp.csproj" />
+    <ProjectReference Include="..\..\Services\Automation\ErpSystem.Automation\ErpSystem.Automation.csproj" />
+  </ItemGroup>
+
+</Project>

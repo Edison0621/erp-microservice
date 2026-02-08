@@ -1,0 +1,184 @@
+using ErpSystem.BuildingBlocks;
+using MongoDB.Driver;
+using ErpSystem.Finance.Domain;
+using Microsoft.Extensions.Logging;
+using MediatR;
+
+namespace ErpSystem.Finance.Infrastructure;
+
+/// <summary>
+/// Read model for material cost projections
+/// Provides fast query access to current cost valuations
+/// </summary>
+public class MaterialCostProjection
+{
+    public Guid Id { get; set; }
+    public string TenantId { get; set; } = string.Empty;
+    public string MaterialId { get; set; } = string.Empty;
+    public string MaterialCode { get; set; } = string.Empty;
+    public string MaterialName { get; set; } = string.Empty;
+    public string WarehouseId { get; set; } = string.Empty;
+    public string WarehouseName { get; set; } = string.Empty;
+    
+    public decimal CurrentAverageCost { get; set; }
+    public decimal TotalQuantityOnHand { get; set; }
+    public decimal TotalValue { get; set; }
+    
+    public DateTime LastUpdated { get; set; }
+    public List<CostMovementHistory> RecentMovements { get; set; } = new();
+}
+
+public class CostMovementHistory
+{
+    public DateTime OccurredAt { get; set; }
+    public string SourceType { get; set; } = string.Empty;
+    public string SourceId { get; set; } = string.Empty;
+    public string MovementType { get; set; } = string.Empty; // RECEIPT or ISSUE
+    public decimal Quantity { get; set; }
+    public decimal UnitCost { get; set; }
+    public decimal Value { get; set; }
+    public decimal AverageCostAfter { get; set; }
+}
+
+/// <summary>
+/// Projection handler that maintains MaterialCostProjection read models
+/// </summary>
+public class MaterialCostProjectionHandler :
+    INotificationHandler<MaterialCostValuationCreatedEvent>,
+    INotificationHandler<MaterialReceiptProcessedEvent>,
+    INotificationHandler<MaterialIssueProcessedEvent>
+{
+    private readonly IMongoCollection<MaterialCostProjection> _collection;
+    private readonly ILogger<MaterialCostProjectionHandler> _logger;
+
+    public MaterialCostProjectionHandler(
+        IMongoDatabase database,
+        ILogger<MaterialCostProjectionHandler> logger)
+    {
+        _collection = database.GetCollection<MaterialCostProjection>("material_cost_projections");
+        _logger = logger;
+    }
+
+    public async Task Handle(MaterialCostValuationCreatedEvent @event, CancellationToken cancellationToken)
+    {
+        var projection = new MaterialCostProjection
+        {
+            Id = @event.AggregateId,
+            TenantId = @event.TenantId,
+            MaterialId = @event.MaterialId,
+            WarehouseId = @event.WarehouseId,
+            CurrentAverageCost = @event.InitialCost,
+            TotalQuantityOnHand = 0,
+            TotalValue = 0,
+            LastUpdated = @event.OccurredAt
+        };
+
+        await _collection.ReplaceOneAsync(
+            p => p.Id == projection.Id,
+            projection,
+            new ReplaceOptions { IsUpsert = true },
+            cancellationToken: cancellationToken);
+    }
+
+    public async Task Handle(MaterialReceiptProcessedEvent @event, CancellationToken cancellationToken)
+    {
+        var filter = Builders<MaterialCostProjection>.Filter.Eq(p => p.Id, @event.AggregateId);
+        
+        var movement = new CostMovementHistory
+        {
+            OccurredAt = @event.OccurredAt,
+            SourceType = @event.SourceType,
+            SourceId = @event.SourceId,
+            MovementType = "RECEIPT",
+            Quantity = @event.Quantity,
+            UnitCost = @event.UnitCost,
+            Value = @event.ReceiptValue,
+            AverageCostAfter = @event.NewAverageCost
+        };
+
+        var update = Builders<MaterialCostProjection>.Update.Combine(
+            Builders<MaterialCostProjection>.Update.Set(p => p.CurrentAverageCost, @event.NewAverageCost),
+            Builders<MaterialCostProjection>.Update.Set(p => p.TotalQuantityOnHand, @event.NewTotalQuantity),
+            Builders<MaterialCostProjection>.Update.Set(p => p.TotalValue, @event.NewTotalValue),
+            Builders<MaterialCostProjection>.Update.Set(p => p.LastUpdated, @event.OccurredAt),
+            Builders<MaterialCostProjection>.Update.PushEach(p => p.RecentMovements, new[] { movement }, slice: -20)
+        );
+
+        await _collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+        
+        _logger.LogInformation(
+            "Updated cost projection for {MaterialId}: Avg Cost = {AvgCost}, Qty = {Qty}, Value = {Value}",
+            @event.MaterialId, @event.NewAverageCost, @event.NewTotalQuantity, @event.NewTotalValue);
+    }
+
+    public async Task Handle(MaterialIssueProcessedEvent @event, CancellationToken cancellationToken)
+    {
+        var filter = Builders<MaterialCostProjection>.Filter.Eq(p => p.Id, @event.AggregateId);
+        
+        var movement = new CostMovementHistory
+        {
+            OccurredAt = @event.OccurredAt,
+            SourceType = @event.SourceType,
+            SourceId = @event.SourceId,
+            MovementType = "ISSUE",
+            Quantity = @event.Quantity,
+            UnitCost = @event.AverageCost,
+            Value = @event.IssueValue,
+            AverageCostAfter = @event.AverageCost
+        };
+
+        var update = Builders<MaterialCostProjection>.Update.Combine(
+            Builders<MaterialCostProjection>.Update.Set(p => p.TotalQuantityOnHand, @event.NewTotalQuantity),
+            Builders<MaterialCostProjection>.Update.Set(p => p.TotalValue, @event.NewTotalValue),
+            Builders<MaterialCostProjection>.Update.Set(p => p.LastUpdated, @event.OccurredAt),
+            Builders<MaterialCostProjection>.Update.PushEach(p => p.RecentMovements, new[] { movement }, slice: -20)
+        );
+
+        await _collection.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+        
+        _logger.LogInformation(
+            "Updated cost projection for {MaterialId} after issue: Qty = {Qty}, Value = {Value}",
+            @event.MaterialId, @event.NewTotalQuantity, @event.NewTotalValue);
+    }
+}
+
+/// <summary>
+/// Query service for cost projections
+/// </summary>
+public class MaterialCostQueries
+{
+    private readonly IMongoCollection<MaterialCostProjection> _collection;
+
+    public MaterialCostQueries(IMongoDatabase database)
+    {
+        _collection = database.GetCollection<MaterialCostProjection>("material_cost_projections");
+    }
+
+    public async Task<MaterialCostProjection?> GetCostValuation(Guid id)
+    {
+        return await _collection.Find(p => p.Id == id).FirstOrDefaultAsync();
+    }
+
+    public async Task<MaterialCostProjection?> GetCostValuation(string warehouseId, string materialId)
+    {
+        var key = $"{warehouseId}_{materialId}";
+        var id = Guid.Parse(string.Format("{0:X32}", key.GetHashCode()));
+        return await GetCostValuation(id);
+    }
+
+    public async Task<List<MaterialCostProjection>> GetCostValuationsByWarehouse(string warehouseId)
+    {
+        return await _collection.Find(p => p.WarehouseId == warehouseId).ToListAsync();
+    }
+
+    public async Task<List<MaterialCostProjection>> GetCostValuationsByMaterial(string materialId)
+    {
+        return await _collection.Find(p => p.MaterialId == materialId).ToListAsync();
+    }
+
+    public async Task<decimal> GetCurrentAverageCost(string warehouseId, string materialId)
+    {
+        var projection = await GetCostValuation(warehouseId, materialId);
+        return projection?.CurrentAverageCost ?? 0;
+    }
+}

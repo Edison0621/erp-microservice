@@ -1,0 +1,123 @@
+using ErpSystem.BuildingBlocks.Domain;
+
+namespace ErpSystem.MasterData.Domain;
+
+// --- Value Objects ---
+
+public record ContactPerson(string Name, string Position, string Phone, string Email, bool IsPrimary);
+public record BankAccount(string BankName, string AccountNumber, string AccountName, bool IsDefault);
+
+// --- Events ---
+
+public record SupplierCreatedEvent(
+    Guid SupplierId, 
+    string SupplierCode, 
+    string SupplierName, 
+    SupplierType SupplierType,
+    string CreditCode
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
+}
+
+public record SupplierProfileUpdatedEvent(
+    Guid SupplierId, 
+    List<ContactPerson> Contacts, 
+    List<BankAccount> BankAccounts
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
+}
+
+public record SupplierStatusChangedEvent(Guid SupplierId, bool IsBlacklisted, string Reason) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
+}
+
+public record SupplierLevelChangedEvent(Guid SupplierId, SupplierLevel NewLevel) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
+}
+
+// --- Enums ---
+
+public enum SupplierType
+{
+    RawMaterial = 1,
+    Outsourcing,
+    Service
+}
+
+public enum SupplierLevel
+{
+    A = 1,
+    B,
+    C,
+    D
+}
+
+// --- Aggregate ---
+
+public class Supplier : AggregateRoot<Guid>
+{
+    public string SupplierCode { get; private set; } = string.Empty;
+    public string SupplierName { get; private set; } = string.Empty;
+    public SupplierType SupplierType { get; private set; }
+    public string CreditCode { get; private set; } = string.Empty;
+    public SupplierLevel Level { get; private set; }
+    public bool IsBlacklisted { get; private set; }
+
+    private readonly List<ContactPerson> _contacts = new();
+    public IReadOnlyCollection<ContactPerson> Contacts => _contacts.AsReadOnly();
+
+    private readonly List<BankAccount> _bankAccounts = new();
+    public IReadOnlyCollection<BankAccount> BankAccounts => _bankAccounts.AsReadOnly();
+
+    public static Supplier Create(Guid id, string code, string name, SupplierType type, string creditCode)
+    {
+        var supplier = new Supplier();
+        supplier.ApplyChange(new SupplierCreatedEvent(id, code, name, type, creditCode));
+        return supplier;
+    }
+
+    public void UpdateProfile(List<ContactPerson> contacts, List<BankAccount> bankAccounts)
+    {
+        ApplyChange(new SupplierProfileUpdatedEvent(Id, contacts, bankAccounts));
+    }
+
+    public void SetBlacklisted(bool blacklisted, string reason)
+    {
+        ApplyChange(new SupplierStatusChangedEvent(Id, blacklisted, reason));
+    }
+
+    protected override void Apply(IDomainEvent @event)
+    {
+        switch (@event)
+        {
+            case SupplierCreatedEvent e:
+                Id = e.SupplierId;
+                SupplierCode = e.SupplierCode;
+                SupplierName = e.SupplierName;
+                SupplierType = e.SupplierType;
+                CreditCode = e.CreditCode;
+                Level = SupplierLevel.D;
+                break;
+            case SupplierProfileUpdatedEvent e:
+                _contacts.Clear();
+                _contacts.AddRange(e.Contacts);
+                _bankAccounts.Clear();
+                _bankAccounts.AddRange(e.BankAccounts);
+                break;
+            case SupplierStatusChangedEvent e:
+                IsBlacklisted = e.IsBlacklisted;
+                break;
+            case SupplierLevelChangedEvent e:
+                Level = e.NewLevel;
+                break;
+        }
+    }
+}

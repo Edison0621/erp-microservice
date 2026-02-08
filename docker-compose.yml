@@ -1,0 +1,98 @@
+version: '3.4'
+
+services:
+  identity-api:
+    image: erpsystem/identity-api
+    build:
+      context: ./src
+      dockerfile: Services/Identity/ErpSystem.Identity/Dockerfile
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=identitydb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  identity-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "identity-api", "-app-port", "8080", "-dapr-http-port", "3500", "-dapr-grpc-port", "50001", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - identity-api
+    network_mode: "service:identity-api"
+
+  gateway:
+    image: erpsystem/gateway
+    build:
+      context: ./src
+      dockerfile: Gateways/ErpSystem.Gateway/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=gatewaydb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+      - identity-api
+    networks:
+      - erp-network
+
+  gateway-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "gateway", "-app-port", "8080", "-dapr-http-port", "3501", "-dapr-grpc-port", "50002", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - gateway
+    network_mode: "service:gateway"
+
+  placement:
+    image: "daprio/dapr:edge"
+    command: [ "./placement", "-port", "50006" ]
+    ports:
+      - "50006:50006"
+    networks:
+      - erp-network
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+    networks:
+      - erp-network
+
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./infrastructure/timescale-init.sql:/docker-entrypoint-initdb.d/02-timescale-init.sql
+    networks:
+      - erp-network
+
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - erp-network
+
+networks:
+  erp-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
