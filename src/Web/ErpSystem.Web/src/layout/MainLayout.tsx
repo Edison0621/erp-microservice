@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Calculator, FileText, Settings, Menu, ShoppingCart, TrendingUp, Factory, Zap, ShieldCheck, BarChart3, Binary, UserPlus, FolderKanban } from 'lucide-react';
+import { LayoutDashboard, Package, Calculator, FileText, Settings, Menu, ShoppingCart, TrendingUp, Factory, Zap, ShieldCheck, BarChart3, Binary, UserPlus, FolderKanban, Wallet, Building2 } from 'lucide-react';
 
 const NavItem = ({ to, icon: Icon, label }: { to: string; icon: any; label: string }) => {
     const location = useLocation();
@@ -42,6 +42,8 @@ export const MainLayout = ({ children }: { children: React.ReactNode }) => {
                     <NavItem to="/sales" icon={TrendingUp} label="Sales" />
                     <NavItem to="/crm" icon={UserPlus} label="CRM" />
                     <NavItem to="/projects" icon={FolderKanban} label="Projects" />
+                    <NavItem to="/payroll" icon={Wallet} label="Payroll" />
+                    <NavItem to="/assets" icon={Building2} label="Assets" />
                     <NavItem to="/production" icon={Factory} label="Production" />
                     <NavItem to="/mrp" icon={Binary} label="MRP" />
                     <NavItem to="/quality" icon={ShieldCheck} label="Quality Control" />

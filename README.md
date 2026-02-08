@@ -43,6 +43,7 @@
 - ✅ Trial Balance & Financial Reports
 - ✅ Accounts Payable / Receivable
 - ✅ Auto Journal Entries from Operations
+- ✅ **Assets Management & Depreciation**
 
 </td>
 <td width="50%">
@@ -61,7 +62,8 @@
 
 ### 🛒 Sales & CRM
 - ✅ Order-to-Cash Workflow
-- ✅ Customer Management
+- ✅ Customer 360 View & CRM
+- ✅ Opportunity & Pipeline Management
 - ✅ Shipment Tracking
 - ✅ Invoice Generation
 - ✅ Sales Analytics Dashboard
@@ -69,11 +71,12 @@
 </td>
 <td>
 
-### 🏭 Manufacturing
-- ✅ Production Orders
-- ✅ Bill of Materials (BOM)
+### 🏭 Manufacturing & Projects
+- ✅ Production Orders & BOM
 - ✅ Work-in-Progress Tracking
 - ✅ Production Efficiency Reports
+- ✅ **Project Management & Tasks**
+- ✅ **Timesheets & Resource Planning**
 - ✅ Asset Maintenance
 
 </td>
@@ -84,6 +87,7 @@
 ### 👥 Human Resources
 - ✅ Employee Lifecycle
 - ✅ Organization Structure
+- ✅ **Payroll Processing & Payslips**
 - ✅ Identity & Access Control (RBAC)
 - ✅ Role-based Permissions
 
@@ -117,10 +121,14 @@ graph TB
         SALES[🛒 Sales]
         PROC[📋 Procurement]
         PROD[🏭 Production]
+        CRM[🤝 CRM]
+        PROJ[📅 Projects]
     end
     
     subgraph "🔧 Supporting Services"
         HR[👥 HR]
+        PAY[💸 Payroll]
+        ASSET[🏢 Assets]
         ID[🔐 Identity]
         MD[📁 MasterData]
         MRP[📈 MRP]
@@ -141,10 +149,10 @@ graph TB
         DAPR{Dapr Sidecar}
     end
     
-    GW --> FIN & INV & SALES & PROC & PROD
-    GW --> HR & ID & MD & MRP & RPT
+    GW --> FIN & INV & SALES & PROC & PROD & CRM & PROJ
+    GW --> HR & PAY & ASSET & ID & MD & MRP & RPT
     
-    FIN & INV & SALES -.->|Event Bus| DAPR
+    FIN & INV & SALES & CRM & PROJ -.->|Event Bus| DAPR
     DAPR -.-> AUTO & ANA
     
     FIN & INV & SALES --> PG
@@ -268,7 +276,11 @@ erp-microservice/
 │   │   ├── Sales/                  # 🛒 Order processing
 │   │   ├── Procurement/            # 📋 Purchase orders
 │   │   ├── Production/             # 🏭 Manufacturing
+│   │   ├── CRM/                    # 🤝 Customer Relationship Management
+│   │   ├── Projects/               # 📅 Project Management
 │   │   ├── HR/                     # 👥 Employee management
+│   │   ├── Payroll/                # 💸 Payroll & Compensation
+│   │   ├── Assets/                 # 🏢 Asset Lifecycle Management
 │   │   ├── Identity/               # 🔐 Auth & RBAC
 │   │   ├── MasterData/             # 📁 Materials, Customers, Suppliers
 │   │   ├── Mrp/                    # 📈 Material Requirements Planning
@@ -316,8 +328,11 @@ dotnet test /p:CollectCoverage=true
 | Phase 5 | ✅ Complete | Enterprise BuildingBlocks |
 | Phase 6 | ✅ Complete | Reporting & BI Dashboard |
 | Phase 7 | ✅ Complete | Kubernetes & Helm Charts |
-| Phase 8 | 🔄 Planned | GraphQL API Layer |
-| Phase 9 | 🔄 Planned | Real-time Notifications (SignalR) |
+| Phase 8 | ✅ Complete | CRM & Customer Portal |
+| Phase 9 | ✅ Complete | Project Management & Timesheets |
+| Phase 10 | ✅ Complete | Payroll & Compensation |
+| Phase 11 | ✅ Complete | Asset Lifecycle Management |
+| Phase 12 | 🔄 Planned | Real-time Notifications (SignalR) |
 
 ---
 
