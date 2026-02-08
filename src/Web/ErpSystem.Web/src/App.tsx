@@ -13,6 +13,8 @@ import { Quality } from './pages/Quality';
 import { Automation } from './pages/Automation';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
+import { CRM } from './pages/CRM';
+import Projects from './pages/Projects';
 
 function App() {
     return (
@@ -25,6 +27,8 @@ function App() {
                     <Route path="/master-data" element={<MasterData />} />
                     <Route path="/procurement" element={<Procurement />} />
                     <Route path="/sales" element={<Sales />} />
+                    <Route path="/crm/*" element={<CRM />} />
+                    <Route path="/projects" element={<Projects />} />
                     <Route path="/production" element={<Production />} />
                     <Route path="/mrp" element={<Mrp />} />
                     <Route path="/quality" element={<Quality />} />

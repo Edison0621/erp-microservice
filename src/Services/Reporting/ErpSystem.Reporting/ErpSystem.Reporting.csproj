@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\BuildingBlocks\ErpSystem.BuildingBlocks\ErpSystem.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\ErpSystem.BuildingBlocks\ErpSystem.BuildingBlocks.csproj" />
   </ItemGroup>
 
 </Project>
