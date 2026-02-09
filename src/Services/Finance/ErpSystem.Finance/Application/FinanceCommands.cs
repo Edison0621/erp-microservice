@@ -31,10 +31,10 @@ public record RegisterPaymentCommand(
 public record IssueInvoiceCommand(Guid InvoiceId) : IRequest;
 
 public record RecordPaymentCommand(
-    Guid InvoiceId, 
-    decimal Amount, 
-    DateTime PaymentDate, 
-    PaymentMethod Method, 
+    Guid InvoiceId,
+    decimal Amount,
+    DateTime PaymentDate,
+    PaymentMethod Method,
     string? ReferenceNo
 ) : IRequest<Guid>;
 
@@ -55,9 +55,10 @@ public class FinanceCommandHandler(EventStoreRepository<Invoice> invoiceRepo, Ev
         Guid id = Guid.NewGuid();
         Invoice invoice = Invoice.Create(id, request.Number, request.Type, request.PartyId, request.PartyName, request.InvoiceDate, request.DueDate, request.Currency);
         invoice.UpdateLines(request.Lines);
-        invoice.Issue(); // Auto-issue for simplicity? Or separate step? Let's auto-issue for now.
-        
+        // invoice.Issue(); // REMOVED: Must be manually issued now
+
         await invoiceRepo.SaveAsync(invoice);
+
         return id;
     }
 
@@ -65,15 +66,15 @@ public class FinanceCommandHandler(EventStoreRepository<Invoice> invoiceRepo, Ev
     {
         Guid paymentId = Guid.NewGuid();
         Payment payment = Payment.Create(
-            paymentId, 
-            request.PaymentNumber, 
-            request.Direction, 
-            request.PartyId, 
-            request.PartyName, 
-            request.Amount, 
-            request.Currency, 
-            request.PaymentDate, 
-            request.Method, 
+            paymentId,
+            request.PaymentNumber,
+            request.Direction,
+            request.PartyId,
+            request.PartyName,
+            request.Amount,
+            request.Currency,
+            request.PaymentDate,
+            request.Method,
             request.ReferenceNo);
 
         if (request.AllocateToInvoiceId.HasValue)
@@ -91,11 +92,11 @@ public class FinanceCommandHandler(EventStoreRepository<Invoice> invoiceRepo, Ev
             // Ideally: Payment emits AllocatedEvent -> Process Manager -> Update Invoice
             // BUT for simplicity in this monolith-ish service: application service orchestrates OR direct call.
             // Direct call is safer for consistency within same service boundary if using same transaction (EventStore doesn't do multi-stream tx easily).
-            
+
             // BETTER: Just update Invoice here? No, Payment Aggregate is the source of "Money Received".
             // Implementation choice: Update Invoice directly in this handler for simplicity, 
             // essentially treating this Command as "Pay Invoice" shortcut.
-            
+
             invoice.RecordPayment(paymentId, request.Amount, request.PaymentDate, request.Method, request.ReferenceNo);
             await invoiceRepo.SaveAsync(invoice);
         }
@@ -116,7 +117,7 @@ public class FinanceCommandHandler(EventStoreRepository<Invoice> invoiceRepo, Ev
     {
         Invoice? invoice = await invoiceRepo.LoadAsync(r.InvoiceId);
         if (invoice == null) throw new KeyNotFoundException("Invoice not found");
-        
+
         Guid paymentId = Guid.NewGuid();
         invoice.RecordPayment(paymentId, r.Amount, r.PaymentDate, r.Method, r.ReferenceNo);
         await invoiceRepo.SaveAsync(invoice);

@@ -1,59 +1,7 @@
 version: '3.4'
 
 services:
-  identity-api:
-    image: erpsystem/identity-api
-    build:
-      context: ./src
-      dockerfile: Services/Identity/ErpSystem.Identity/Dockerfile
-    ports:
-      - "5001:8080"
-    environment:
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=identitydb;Username=postgres;Password=postgres
-    depends_on:
-      - postgres
-      - redis
-      - placement
-    networks:
-      - erp-network
-
-  identity-api-dapr:
-    image: "daprio/daprd:edge"
-    command: [ "./daprd", "-app-id", "identity-api", "-app-port", "8080", "-dapr-http-port", "3500", "-dapr-grpc-port", "50001", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
-    volumes:
-      - "./components/:/components"
-    depends_on:
-      - identity-api
-    network_mode: "service:identity-api"
-
-  gateway:
-    image: erpsystem/gateway
-    build:
-      context: ./src
-      dockerfile: Gateways/ErpSystem.Gateway/Dockerfile
-    ports:
-      - "5072:8080"
-    environment:
-      - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Database=gatewaydb;Username=postgres;Password=postgres
-    depends_on:
-      - postgres
-      - redis
-      - placement
-      - identity-api
-    networks:
-      - erp-network
-
-  gateway-dapr:
-    image: "daprio/daprd:edge"
-    command: [ "./daprd", "-app-id", "gateway", "-app-port", "8080", "-dapr-http-port", "3501", "-dapr-grpc-port", "50002", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
-    volumes:
-      - "./components/:/components"
-    depends_on:
-      - gateway
-    network_mode: "service:gateway"
-
+  # Infrastructure
   placement:
     image: "daprio/dapr:edge"
     command: [ "./placement", "-port", "50006" ]
@@ -89,6 +37,546 @@ services:
       - "9411:9411"
     networks:
       - erp-network
+
+  # Gateway
+  gateway:
+    image: erpsystem/gateway
+    build:
+      context: ./src
+      dockerfile: Gateways/ErpSystem.Gateway/Dockerfile
+    ports:
+      - "5072:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=gatewaydb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  gateway-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "gateway", "-app-port", "8080", "-dapr-http-port", "3501", "-dapr-grpc-port", "50002", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - gateway
+    network_mode: "service:gateway"
+
+  # Identity Service (5001)
+  identity-api:
+    image: erpsystem/identity-api
+    build:
+      context: ./src
+      dockerfile: Services/Identity/ErpSystem.Identity/Dockerfile
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=identitydb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  identity-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "identity-api", "-app-port", "8080", "-dapr-http-port", "3500", "-dapr-grpc-port", "50001", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - identity-api
+    network_mode: "service:identity-api"
+
+  # MasterData Service (5002)
+  masterdata-api:
+    image: erpsystem/masterdata-api
+    build:
+      context: ./src
+      dockerfile: Services/MasterData/ErpSystem.MasterData/Dockerfile
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=masterdatadb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  masterdata-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "masterdata-api", "-app-port", "8080", "-dapr-http-port", "3502", "-dapr-grpc-port", "50003", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - masterdata-api
+    network_mode: "service:masterdata-api"
+
+  # Procurement Service (5003)
+  procurement-api:
+    image: erpsystem/procurement-api
+    build:
+      context: ./src
+      dockerfile: Services/Procurement/ErpSystem.Procurement/Dockerfile
+    ports:
+      - "5003:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=procurementdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  procurement-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "procurement-api", "-app-port", "8080", "-dapr-http-port", "3503", "-dapr-grpc-port", "50004", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - procurement-api
+    network_mode: "service:procurement-api"
+
+  # Finance Service (5004)
+  finance-api:
+    image: erpsystem/finance-api
+    build:
+      context: ./src
+      dockerfile: Services/Finance/ErpSystem.Finance/Dockerfile
+    ports:
+      - "5004:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=financedb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  finance-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "finance-api", "-app-port", "8080", "-dapr-http-port", "3504", "-dapr-grpc-port", "50005", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - finance-api
+    network_mode: "service:finance-api"
+
+  # Inventory Service (5005)
+  inventory-api:
+    image: erpsystem/inventory-api
+    build:
+      context: ./src
+      dockerfile: Services/Inventory/ErpSystem.Inventory/Dockerfile
+    ports:
+      - "5005:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=inventorydb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  inventory-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "inventory-api", "-app-port", "8080", "-dapr-http-port", "3505", "-dapr-grpc-port", "50007", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - inventory-api
+    network_mode: "service:inventory-api"
+
+  # Sales Service (5006)
+  sales-api:
+    image: erpsystem/sales-api
+    build:
+      context: ./src
+      dockerfile: Services/Sales/ErpSystem.Sales/Dockerfile
+    ports:
+      - "5006:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=salesdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  sales-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "sales-api", "-app-port", "8080", "-dapr-http-port", "3506", "-dapr-grpc-port", "50008", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - sales-api
+    network_mode: "service:sales-api"
+
+  # Production Service (5007)
+  production-api:
+    image: erpsystem/production-api
+    build:
+      context: ./src
+      dockerfile: Services/Production/ErpSystem.Production/Dockerfile
+    ports:
+      - "5007:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=productiondb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  production-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "production-api", "-app-port", "8080", "-dapr-http-port", "3507", "-dapr-grpc-port", "50009", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - production-api
+    network_mode: "service:production-api"
+
+  # HR Service (5008)
+  hr-api:
+    image: erpsystem/hr-api
+    build:
+      context: ./src
+      dockerfile: Services/HR/ErpSystem.HR/Dockerfile
+    ports:
+      - "5008:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=hrdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  hr-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "hr-api", "-app-port", "8080", "-dapr-http-port", "3508", "-dapr-grpc-port", "50010", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - hr-api
+    network_mode: "service:hr-api"
+
+  # CRM Service (5009)
+  crm-api:
+    image: erpsystem/crm-api
+    build:
+      context: ./src
+      dockerfile: Services/CRM/ErpSystem.CRM/Dockerfile
+    ports:
+      - "5009:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=crmdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  crm-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "crm-api", "-app-port", "8080", "-dapr-http-port", "3509", "-dapr-grpc-port", "50011", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - crm-api
+    network_mode: "service:crm-api"
+
+  # Analytics Service (5010)
+  analytics-api:
+    image: erpsystem/analytics-api
+    build:
+      context: ./src
+      dockerfile: Services/Analytics/ErpSystem.Analytics/Dockerfile
+    ports:
+      - "5010:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=analyticsdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  analytics-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "analytics-api", "-app-port", "8080", "-dapr-http-port", "3510", "-dapr-grpc-port", "50012", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - analytics-api
+    network_mode: "service:analytics-api"
+
+  # Quality Service (5011)
+  quality-api:
+    image: erpsystem/quality-api
+    build:
+      context: ./src
+      dockerfile: Services/Quality/ErpSystem.Quality/Dockerfile
+    ports:
+      - "5011:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=qualitydb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  quality-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "quality-api", "-app-port", "8080", "-dapr-http-port", "3511", "-dapr-grpc-port", "50013", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - quality-api
+    network_mode: "service:quality-api"
+
+  # Projects Service (5012)
+  projects-api:
+    image: erpsystem/projects-api
+    build:
+      context: ./src
+      dockerfile: Services/Projects/ErpSystem.Projects/Dockerfile
+    ports:
+      - "5012:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=projectsdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  projects-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "projects-api", "-app-port", "8080", "-dapr-http-port", "3512", "-dapr-grpc-port", "50014", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - projects-api
+    network_mode: "service:projects-api"
+
+  # Automation Service (5013)
+  automation-api:
+    image: erpsystem/automation-api
+    build:
+      context: ./src
+      dockerfile: Services/Automation/ErpSystem.Automation/Dockerfile
+    ports:
+      - "5013:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=automationdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  automation-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "automation-api", "-app-port", "8080", "-dapr-http-port", "3513", "-dapr-grpc-port", "50015", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - automation-api
+    network_mode: "service:automation-api"
+
+  # Assets Service (5014)
+  assets-api:
+    image: erpsystem/assets-api
+    build:
+      context: ./src
+      dockerfile: Services/Assets/ErpSystem.Assets/Dockerfile
+    ports:
+      - "5014:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=assetsdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  assets-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "assets-api", "-app-port", "8080", "-dapr-http-port", "3514", "-dapr-grpc-port", "50016", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - assets-api
+    network_mode: "service:assets-api"
+
+  # Maintenance Service (5015)
+  maintenance-api:
+    image: erpsystem/maintenance-api
+    build:
+      context: ./src
+      dockerfile: Services/Maintenance/ErpSystem.Maintenance/Dockerfile
+    ports:
+      - "5015:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=maintenancedb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  maintenance-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "maintenance-api", "-app-port", "8080", "-dapr-http-port", "3515", "-dapr-grpc-port", "50017", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - maintenance-api
+    network_mode: "service:maintenance-api"
+
+  # Payroll Service (5016)
+  payroll-api:
+    image: erpsystem/payroll-api
+    build:
+      context: ./src
+      dockerfile: Services/Payroll/ErpSystem.Payroll/Dockerfile
+    ports:
+      - "5016:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=payrolldb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  payroll-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "payroll-api", "-app-port", "8080", "-dapr-http-port", "3516", "-dapr-grpc-port", "50018", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - payroll-api
+    network_mode: "service:payroll-api"
+
+  # Reporting Service (5017)
+  reporting-api:
+    image: erpsystem/reporting-api
+    build:
+      context: ./src
+      dockerfile: Services/Reporting/ErpSystem.Reporting/Dockerfile
+    ports:
+      - "5017:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=reportingdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  reporting-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "reporting-api", "-app-port", "8080", "-dapr-http-port", "3517", "-dapr-grpc-port", "50019", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - reporting-api
+    network_mode: "service:reporting-api"
+
+  # Settings Service (5018)
+  settings-api:
+    image: erpsystem/settings-api
+    build:
+      context: ./src
+      dockerfile: Services/Settings/ErpSystem.Settings/Dockerfile
+    ports:
+      - "5018:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=settingsdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  settings-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "settings-api", "-app-port", "8080", "-dapr-http-port", "3518", "-dapr-grpc-port", "50020", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - settings-api
+    network_mode: "service:settings-api"
+
+  # Mrp Service (5019)
+  mrp-api:
+    image: erpsystem/mrp-api
+    build:
+      context: ./src
+      dockerfile: Services/Mrp/ErpSystem.Mrp/Dockerfile
+    ports:
+      - "5019:8080"
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=mrpdb;Username=postgres;Password=postgres
+    depends_on:
+      - postgres
+      - redis
+      - placement
+    networks:
+      - erp-network
+
+  mrp-api-dapr:
+    image: "daprio/daprd:edge"
+    command: [ "./daprd", "-app-id", "mrp-api", "-app-port", "8080", "-dapr-http-port", "3519", "-dapr-grpc-port", "50021", "-log-level", "debug", "-components-path", "/components", "-placement-host-address", "placement:50006" ]
+    volumes:
+      - "./components/:/components"
+    depends_on:
+      - mrp-api
+    network_mode: "service:mrp-api"
 
 networks:
   erp-network:

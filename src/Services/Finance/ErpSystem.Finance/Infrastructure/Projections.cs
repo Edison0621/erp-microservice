@@ -38,7 +38,8 @@ public class FinanceProjections(FinanceReadDbContext context) :
         InvoiceReadModel? model = await context.Invoices.FindAsync([e.InvoiceId], ct);
         if (model != null)
         {
-            model.LinesJson = JsonSerializer.Serialize(e.Lines);
+            model.LinesJson = JsonSerializer.Serialize(e.Lines, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
             model.TotalAmount = e.Lines.Sum(l => l.TotalAmount);
             model.OutstandingAmount = model.TotalAmount - model.PaidAmount;
             await context.SaveChangesAsync(ct);
