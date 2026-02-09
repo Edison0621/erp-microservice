@@ -1,16 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
-using System.Text.Json;
-using MediatR;
-using ErpSystem.BuildingBlocks.EventBus;
 
 namespace ErpSystem.Finance.Infrastructure;
 
-public class FinanceEventStoreDbContext : DbContext
+public class FinanceEventStoreDbContext(DbContextOptions<FinanceEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public FinanceEventStoreDbContext(DbContextOptions<FinanceEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -22,17 +17,17 @@ public class FinanceEventStoreDbContext : DbContext
     }
 }
 
-public class FinanceReadDbContext : DbContext
+public class FinanceReadDbContext(DbContextOptions<FinanceReadDbContext> options) : DbContext(options)
 {
     public DbSet<InvoiceReadModel> Invoices { get; set; } = null!;
+
     public DbSet<PaymentReadModel> Payments { get; set; } = null!;
+
     // GL
     public DbSet<AccountReadModel> Accounts { get; set; } = null!;
     public DbSet<JournalEntryReadModel> JournalEntries { get; set; } = null!;
     public DbSet<JournalEntryLineReadModel> JournalEntryLines { get; set; } = null!;
     public DbSet<FinancialPeriodReadModel> FinancialPeriods { get; set; } = null!;
-
-    public FinanceReadDbContext(DbContextOptions<FinanceReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

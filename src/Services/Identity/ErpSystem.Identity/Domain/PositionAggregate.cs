@@ -17,7 +17,7 @@ public class Position : AggregateRoot<Guid>
 
     public static Position Create(Guid id, string name, string description)
     {
-        var pos = new Position();
+        Position pos = new Position();
         pos.ApplyChange(new PositionCreatedEvent(id, name, description));
         return pos;
     }
@@ -27,9 +27,9 @@ public class Position : AggregateRoot<Guid>
         switch (@event)
         {
             case PositionCreatedEvent e:
-                Id = e.PositionId;
-                Name = e.Name;
-                Description = e.Description;
+                this.Id = e.PositionId;
+                this.Name = e.Name;
+                this.Description = e.Description;
                 break;
         }
     }

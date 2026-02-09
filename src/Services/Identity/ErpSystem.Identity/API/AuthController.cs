@@ -6,20 +6,13 @@ namespace ErpSystem.Identity.API.Controllers;
 
 [ApiController]
 [Route("api/v1/identity/auth")]
-public class AuthController : ControllerBase
+public class AuthController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public AuthController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterUserCommand command)
     {
-        var uid = await _mediator.Send(command);
-        return Ok(new { UserId = uid });
+        Guid uid = await mediator.Send(command);
+        return this.Ok(new { UserId = uid });
     }
 
     [HttpPost("login")]
@@ -27,12 +20,12 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var token = await _mediator.Send(command);
-            return Ok(new { Token = token });
+            string token = await mediator.Send(command);
+            return this.Ok(new { Token = token });
         }
         catch (Exception ex)
         {
-            return Unauthorized(ex.Message);
+            return this.Unauthorized(ex.Message);
         }
     }
 }

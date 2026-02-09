@@ -52,14 +52,14 @@ public class Account : AggregateRoot<Guid>
     // Constructor for creating new account
     public static Account Create(Guid id, string code, string name, AccountType type, AccountClass accountClass, Guid? parentId, BalanceType balanceType, string currency)
     {
-        var account = new Account();
+        Account account = new Account();
         account.ApplyChange(new AccountCreatedEvent(id, code, name, type, accountClass, parentId, balanceType, currency));
         return account;
     }
 
     public void UpdateDetails(string name, bool isActive)
     {
-        ApplyChange(new AccountDetailsUpdatedEvent(Id, name, isActive));
+        this.ApplyChange(new AccountDetailsUpdatedEvent(this.Id, name, isActive));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -67,19 +67,19 @@ public class Account : AggregateRoot<Guid>
         switch (@event)
         {
             case AccountCreatedEvent e:
-                Id = e.AccountId;
-                Code = e.Code;
-                Name = e.Name;
-                Type = e.Type;
-                Class = e.Class;
-                ParentAccountId = e.ParentAccountId;
-                BalanceType = e.BalanceType;
-                Currency = e.Currency;
-                IsActive = true;
+                this.Id = e.AccountId;
+                this.Code = e.Code;
+                this.Name = e.Name;
+                this.Type = e.Type;
+                this.Class = e.Class;
+                this.ParentAccountId = e.ParentAccountId;
+                this.BalanceType = e.BalanceType;
+                this.Currency = e.Currency;
+                this.IsActive = true;
                 break;
             case AccountDetailsUpdatedEvent e:
-                Name = e.Name;
-                IsActive = e.IsActive;
+                this.Name = e.Name;
+                this.IsActive = e.IsActive;
                 break;
         }
     }

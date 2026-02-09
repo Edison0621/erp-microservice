@@ -5,11 +5,9 @@ namespace ErpSystem.Payroll.Infrastructure;
 
 #region Event Store DbContext
 
-public class PayrollEventStoreDbContext : DbContext
+public class PayrollEventStoreDbContext(DbContextOptions<PayrollEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public PayrollEventStoreDbContext(DbContextOptions<PayrollEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,13 +23,11 @@ public class PayrollEventStoreDbContext : DbContext
 
 #region Read DbContext
 
-public class PayrollReadDbContext : DbContext
+public class PayrollReadDbContext(DbContextOptions<PayrollReadDbContext> options) : DbContext(options)
 {
     public DbSet<SalaryStructureReadModel> SalaryStructures { get; set; } = null!;
     public DbSet<PayrollRunReadModel> PayrollRuns { get; set; } = null!;
     public DbSet<PayslipReadModel> Payslips { get; set; } = null!;
-
-    public PayrollReadDbContext(DbContextOptions<PayrollReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

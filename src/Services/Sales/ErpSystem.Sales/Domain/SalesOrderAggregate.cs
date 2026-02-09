@@ -25,13 +25,13 @@ public record SalesOrderLine(
     decimal DiscountRate
 )
 {
-    public decimal LineAmount => OrderedQuantity * UnitPrice * (1 - DiscountRate);
+    public decimal LineAmount => this.OrderedQuantity * this.UnitPrice * (1 - this.DiscountRate);
 }
 
 // Events
 public record SalesOrderCreatedEvent(
     Guid OrderId,
-    string SONumber,
+    string SoNumber,
     string CustomerId,
     string CustomerName,
     DateTime OrderDate,
@@ -66,13 +66,13 @@ public record ShipmentProcessedLine(string LineNumber, decimal ShippedQuantity);
 // Aggregate
 public class SalesOrder : AggregateRoot<Guid>
 {
-    public string SONumber { get; private set; } = string.Empty;
+    public string SoNumber { get; private set; } = string.Empty;
     public string CustomerId { get; private set; } = string.Empty;
     public string CustomerName { get; private set; } = string.Empty;
     public SalesOrderStatus Status { get; private set; }
     public string Currency { get; private set; } = "CNY";
-    public List<SalesOrderLine> Lines { get; private set; } = new();
-    public decimal TotalAmount => Lines.Sum(l => l.LineAmount);
+    public List<SalesOrderLine> Lines { get; private set; } = [];
+    public decimal TotalAmount => this.Lines.Sum(l => l.LineAmount);
 
     public static SalesOrder Create(
         Guid id, 
@@ -83,31 +83,31 @@ public class SalesOrder : AggregateRoot<Guid>
         string currency, 
         List<SalesOrderLine> lines)
     {
-        var so = new SalesOrder();
+        SalesOrder so = new SalesOrder();
         so.ApplyChange(new SalesOrderCreatedEvent(id, soNumber, customerId, customerName, orderDate, currency, lines));
         return so;
     }
 
     public void Confirm()
     {
-        if (Status != SalesOrderStatus.Draft && Status != SalesOrderStatus.PendingApproval)
+        if (this.Status != SalesOrderStatus.Draft && this.Status != SalesOrderStatus.PendingApproval)
             throw new InvalidOperationException("Only Draft or Pending orders can be confirmed");
-        ApplyChange(new SalesOrderConfirmedEvent(Id));
+        this.ApplyChange(new SalesOrderConfirmedEvent(this.Id));
     }
 
     public void Cancel(string reason)
     {
-        if (Status == SalesOrderStatus.FullyShipped || Status == SalesOrderStatus.Closed)
+        if (this.Status == SalesOrderStatus.FullyShipped || this.Status == SalesOrderStatus.Closed)
             throw new InvalidOperationException("Cannot cancel a shipped or closed order");
-        ApplyChange(new SalesOrderCancelledEvent(Id, reason));
+        this.ApplyChange(new SalesOrderCancelledEvent(this.Id, reason));
     }
 
     public void ProcessShipment(Guid shipmentId, List<ShipmentProcessedLine> shipmentLines)
     {
-        if (Status != SalesOrderStatus.Confirmed && Status != SalesOrderStatus.PartiallyShipped)
+        if (this.Status != SalesOrderStatus.Confirmed && this.Status != SalesOrderStatus.PartiallyShipped)
             throw new InvalidOperationException("Order must be confirmed or partially shipped to process shipment");
-            
-        ApplyChange(new SalesOrderShipmentProcessedEvent(Id, shipmentId, shipmentLines));
+
+        this.ApplyChange(new SalesOrderShipmentProcessedEvent(this.Id, shipmentId, shipmentLines));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -115,35 +115,32 @@ public class SalesOrder : AggregateRoot<Guid>
         switch (@event)
         {
             case SalesOrderCreatedEvent e:
-                Id = e.OrderId;
-                SONumber = e.SONumber;
-                CustomerId = e.CustomerId;
-                CustomerName = e.CustomerName;
-                Currency = e.Currency;
-                Lines = e.Lines;
-                Status = SalesOrderStatus.Draft;
+                this.Id = e.OrderId;
+                this.SoNumber = e.SoNumber;
+                this.CustomerId = e.CustomerId;
+                this.CustomerName = e.CustomerName;
+                this.Currency = e.Currency;
+                this.Lines = e.Lines;
+                this.Status = SalesOrderStatus.Draft;
                 break;
             case SalesOrderConfirmedEvent:
-                Status = SalesOrderStatus.Confirmed;
+                this.Status = SalesOrderStatus.Confirmed;
                 break;
             case SalesOrderCancelledEvent:
-                Status = SalesOrderStatus.Cancelled;
+                this.Status = SalesOrderStatus.Cancelled;
                 break;
             case SalesOrderShipmentProcessedEvent e:
-                foreach (var sl in e.Lines)
+                foreach (ShipmentProcessedLine sl in e.Lines)
                 {
-                    var lineIdx = Lines.FindIndex(l => l.LineNumber == sl.LineNumber);
+                    int lineIdx = this.Lines.FindIndex(l => l.LineNumber == sl.LineNumber);
                     if (lineIdx >= 0)
                     {
-                        var line = Lines[lineIdx];
-                        Lines[lineIdx] = line with { ShippedQuantity = line.ShippedQuantity + sl.ShippedQuantity };
+                        SalesOrderLine line = this.Lines[lineIdx];
+                        this.Lines[lineIdx] = line with { ShippedQuantity = line.ShippedQuantity + sl.ShippedQuantity };
                     }
                 }
                 
-                if (Lines.All(l => l.ShippedQuantity >= l.OrderedQuantity))
-                    Status = SalesOrderStatus.FullyShipped;
-                else
-                    Status = SalesOrderStatus.PartiallyShipped;
+                this.Status = this.Lines.All(l => l.ShippedQuantity >= l.OrderedQuantity) ? SalesOrderStatus.FullyShipped : SalesOrderStatus.PartiallyShipped;
                 break;
         }
     }

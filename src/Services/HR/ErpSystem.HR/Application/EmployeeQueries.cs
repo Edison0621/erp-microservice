@@ -5,29 +5,24 @@ using Microsoft.EntityFrameworkCore;
 namespace ErpSystem.HR.Application;
 
 public record GetEmployeeByIdQuery(Guid Id) : IRequest<EmployeeReadModel?>;
+
 public record SearchEmployeesQuery(string? FullName, string? DepartmentId, string? Status, int Page = 1, int PageSize = 20) : IRequest<List<EmployeeReadModel>>;
+
 public record GetEmployeeEventsQuery(Guid EmployeeId) : IRequest<List<EmployeeEventReadModel>>;
 
-public class EmployeeQueryHandler : 
+public class EmployeeQueryHandler(HrReadDbContext readDb) :
     IRequestHandler<GetEmployeeByIdQuery, EmployeeReadModel?>,
     IRequestHandler<SearchEmployeesQuery, List<EmployeeReadModel>>,
     IRequestHandler<GetEmployeeEventsQuery, List<EmployeeEventReadModel>>
 {
-    private readonly HRReadDbContext _readDb;
-
-    public EmployeeQueryHandler(HRReadDbContext readDb)
-    {
-        _readDb = readDb;
-    }
-
     public async Task<EmployeeReadModel?> Handle(GetEmployeeByIdQuery request, CancellationToken ct)
     {
-        return await _readDb.Employees.FindAsync(new object[] { request.Id }, ct);
+        return await readDb.Employees.FindAsync([request.Id], ct);
     }
 
     public async Task<List<EmployeeReadModel>> Handle(SearchEmployeesQuery request, CancellationToken ct)
     {
-        var query = _readDb.Employees.AsNoTracking().AsQueryable();
+        IQueryable<EmployeeReadModel> query = readDb.Employees.AsNoTracking().AsQueryable();
         if (!string.IsNullOrEmpty(request.FullName)) query = query.Where(x => EF.Functions.Like(x.FullName, $"%{request.FullName}%"));
         if (!string.IsNullOrEmpty(request.DepartmentId)) query = query.Where(x => x.DepartmentId == request.DepartmentId);
         if (!string.IsNullOrEmpty(request.Status)) query = query.Where(x => x.Status == request.Status);
@@ -40,7 +35,7 @@ public class EmployeeQueryHandler :
 
     public async Task<List<EmployeeEventReadModel>> Handle(GetEmployeeEventsQuery request, CancellationToken ct)
     {
-        return await _readDb.EmployeeEvents.AsNoTracking()
+        return await readDb.EmployeeEvents.AsNoTracking()
                           .Where(x => x.EmployeeId == request.EmployeeId)
                           .OrderByDescending(x => x.OccurredAt)
                           .ToListAsync(ct);

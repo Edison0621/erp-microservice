@@ -3,11 +3,9 @@ using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.MasterData.Infrastructure;
 
-public class MasterDataEventStoreDbContext : DbContext
+public class MasterDataEventStoreDbContext(DbContextOptions<MasterDataEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> EventStreams { get; set; } = null!;
-
-    public MasterDataEventStoreDbContext(DbContextOptions<MasterDataEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

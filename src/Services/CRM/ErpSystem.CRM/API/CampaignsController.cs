@@ -8,17 +8,8 @@ namespace ErpSystem.CRM.API;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CampaignsController : ControllerBase
+public class CampaignsController(EventStoreRepository<Campaign> repository, CrmReadDbContext readDb) : ControllerBase
 {
-    private readonly EventStoreRepository<Campaign> _repository;
-    private readonly CrmReadDbContext _readDb;
-
-    public CampaignsController(EventStoreRepository<Campaign> repository, CrmReadDbContext readDb)
-    {
-        _repository = repository;
-        _readDb = readDb;
-    }
-
     #region Queries
 
     /// <summary>
@@ -31,21 +22,21 @@ public class CampaignsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var query = _readDb.Campaigns.AsQueryable();
+        IQueryable<CampaignReadModel> query = readDb.Campaigns.AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
             query = query.Where(c => c.Status == status);
         if (!string.IsNullOrEmpty(type))
             query = query.Where(c => c.Type == type);
 
-        var total = await query.CountAsync();
-        var items = await query
+        int total = await query.CountAsync();
+        List<CampaignReadModel> items = await query
             .OrderByDescending(c => c.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        return Ok(new { total, page, pageSize, items });
+        return this.Ok(new { total, page, pageSize, items });
     }
 
     /// <summary>
@@ -54,21 +45,21 @@ public class CampaignsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetCampaign(Guid id)
     {
-        var campaign = await _readDb.Campaigns.FindAsync(id);
-        if (campaign == null) return NotFound();
-        return Ok(campaign);
+        CampaignReadModel? campaign = await readDb.Campaigns.FindAsync(id);
+        if (campaign == null) return this.NotFound();
+        return this.Ok(campaign);
     }
 
     /// <summary>
     /// Get campaign ROI analysis
     /// </summary>
     [HttpGet("{id:guid}/roi")]
-    public async Task<IActionResult> GetCampaignROI(Guid id)
+    public async Task<IActionResult> GetCampaignRoi(Guid id)
     {
-        var campaign = await _readDb.Campaigns.FindAsync(id);
-        if (campaign == null) return NotFound();
+        CampaignReadModel? campaign = await readDb.Campaigns.FindAsync(id);
+        if (campaign == null) return this.NotFound();
 
-        return Ok(new
+        return this.Ok(new
         {
             campaignId = id,
             name = campaign.Name,
@@ -80,7 +71,7 @@ public class CampaignsController : ControllerBase
             conversionRate = campaign.ConversionRate,
             costPerLead = campaign.CostPerLead,
             totalRevenue = campaign.TotalRevenue,
-            roi = campaign.ROI
+            roi = campaign.Roi
         });
     }
 
@@ -88,9 +79,9 @@ public class CampaignsController : ControllerBase
     /// Get all campaigns ROI summary
     /// </summary>
     [HttpGet("roi-summary")]
-    public async Task<IActionResult> GetCampaignsROISummary()
+    public async Task<IActionResult> GetCampaignsRoiSummary()
     {
-        var campaigns = await _readDb.Campaigns
+        var campaigns = await readDb.Campaigns
             .Where(c => c.Status == "Completed" || c.Status == "Active")
             .Select(c => new
             {
@@ -102,17 +93,18 @@ public class CampaignsController : ControllerBase
                 c.TotalLeads,
                 c.ConvertedLeads,
                 c.TotalRevenue,
-                c.ROI
+                ROI = c.Roi
             })
             .OrderByDescending(c => c.ROI)
             .ToListAsync();
 
-        var totalBudget = campaigns.Sum(c => c.Budget);
-        var totalExpenses = campaigns.Sum(c => c.TotalExpenses);
-        var totalRevenue = campaigns.Sum(c => c.TotalRevenue);
-        var overallROI = totalExpenses > 0 ? (totalRevenue - totalExpenses) / totalExpenses * 100 : 0;
+        decimal totalBudget = campaigns.Sum(c => c.Budget);
+        decimal totalExpenses = campaigns.Sum(c => c.TotalExpenses);
+        decimal totalRevenue = campaigns.Sum(c => c.TotalRevenue);
+        decimal overallRoi = totalExpenses > 0 ? (totalRevenue - totalExpenses) / totalExpenses * 100 : 0;
 
-        return Ok(new { campaigns, totalBudget, totalExpenses, totalRevenue, overallROI });
+        return this.Ok(new { campaigns, totalBudget, totalExpenses, totalRevenue,
+            overallROI = overallRoi });
     }
 
     #endregion
@@ -125,9 +117,9 @@ public class CampaignsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateCampaign([FromBody] CreateCampaignRequest request)
     {
-        var campaignNumber = $"CMP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+        string campaignNumber = $"CMP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
-        var campaign = Campaign.Create(
+        Campaign campaign = Campaign.Create(
             Guid.NewGuid(),
             campaignNumber,
             request.Name,
@@ -140,9 +132,9 @@ public class CampaignsController : ControllerBase
             request.TargetAudience,
             request.Description);
 
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return CreatedAtAction(nameof(GetCampaign), new { id = campaign.Id },
+        return this.CreatedAtAction(nameof(this.GetCampaign), new { id = campaign.Id },
             new { id = campaign.Id, campaignNumber = campaign.CampaignNumber });
     }
 
@@ -152,13 +144,13 @@ public class CampaignsController : ControllerBase
     [HttpPost("{id:guid}/start")]
     public async Task<IActionResult> StartCampaign(Guid id)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.Start();
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, status = "Active" });
+        return this.Ok(new { id, status = "Active" });
     }
 
     /// <summary>
@@ -167,13 +159,13 @@ public class CampaignsController : ControllerBase
     [HttpPost("{id:guid}/pause")]
     public async Task<IActionResult> PauseCampaign(Guid id)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.Pause();
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, status = "Paused" });
+        return this.Ok(new { id, status = "Paused" });
     }
 
     /// <summary>
@@ -182,13 +174,13 @@ public class CampaignsController : ControllerBase
     [HttpPost("{id:guid}/resume")]
     public async Task<IActionResult> ResumeCampaign(Guid id)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.Resume();
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, status = "Active" });
+        return this.Ok(new { id, status = "Active" });
     }
 
     /// <summary>
@@ -197,13 +189,13 @@ public class CampaignsController : ControllerBase
     [HttpPost("{id:guid}/complete")]
     public async Task<IActionResult> CompleteCampaign(Guid id)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.Complete();
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, status = "Completed" });
+        return this.Ok(new { id, status = "Completed" });
     }
 
     /// <summary>
@@ -212,13 +204,13 @@ public class CampaignsController : ControllerBase
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> CancelCampaign(Guid id)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.Cancel();
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, status = "Cancelled" });
+        return this.Ok(new { id, status = "Cancelled" });
     }
 
     /// <summary>
@@ -227,13 +219,13 @@ public class CampaignsController : ControllerBase
     [HttpPost("{id:guid}/schedule")]
     public async Task<IActionResult> ScheduleCampaign(Guid id)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.Schedule();
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, status = "Scheduled" });
+        return this.Ok(new { id, status = "Scheduled" });
     }
 
     /// <summary>
@@ -242,13 +234,13 @@ public class CampaignsController : ControllerBase
     [HttpPut("{id:guid}/budget")]
     public async Task<IActionResult> UpdateBudget(Guid id, [FromBody] UpdateBudgetRequest request)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.UpdateBudget(request.Budget, request.Reason);
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, budget = request.Budget });
+        return this.Ok(new { id, budget = request.Budget });
     }
 
     /// <summary>
@@ -257,13 +249,13 @@ public class CampaignsController : ControllerBase
     [HttpPost("{id:guid}/leads")]
     public async Task<IActionResult> AssociateLead(Guid id, [FromBody] AssociateLeadRequest request)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.AssociateLead(request.LeadId, request.LeadNumber);
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, message = "Lead associated" });
+        return this.Ok(new { id, message = "Lead associated" });
     }
 
     /// <summary>
@@ -272,8 +264,8 @@ public class CampaignsController : ControllerBase
     [HttpPost("{id:guid}/expenses")]
     public async Task<IActionResult> RecordExpense(Guid id, [FromBody] RecordExpenseRequest request)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.RecordExpense(
             request.Description,
@@ -281,9 +273,9 @@ public class CampaignsController : ControllerBase
             request.ExpenseDate ?? DateTime.UtcNow,
             request.RecordedByUserId);
 
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, message = "Expense recorded" });
+        return this.Ok(new { id, message = "Expense recorded" });
     }
 
     /// <summary>
@@ -292,13 +284,13 @@ public class CampaignsController : ControllerBase
     [HttpPut("{id:guid}/metrics")]
     public async Task<IActionResult> UpdateMetrics(Guid id, [FromBody] UpdateMetricsRequest request)
     {
-        var campaign = await _repository.LoadAsync(id);
-        if (campaign == null) return NotFound();
+        Campaign? campaign = await repository.LoadAsync(id);
+        if (campaign == null) return this.NotFound();
 
         campaign.UpdateMetrics(request.TotalLeads, request.ConvertedLeads, request.TotalRevenue);
-        await _repository.SaveAsync(campaign);
+        await repository.SaveAsync(campaign);
 
-        return Ok(new { id, message = "Metrics updated" });
+        return this.Ok(new { id, message = "Metrics updated" });
     }
 
     #endregion
@@ -319,6 +311,7 @@ public record CreateCampaignRequest(
 );
 
 public record UpdateBudgetRequest(decimal Budget, string? Reason);
+
 public record AssociateLeadRequest(Guid LeadId, string LeadNumber);
 
 public record RecordExpenseRequest(

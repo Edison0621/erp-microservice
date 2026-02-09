@@ -1,6 +1,5 @@
 using MediatR;
 using ErpSystem.BuildingBlocks.Domain;
-using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Finance.Domain;
 
 namespace ErpSystem.Finance.Application;
@@ -43,7 +42,7 @@ public record WriteOffInvoiceCommand(Guid InvoiceId, string Reason) : IRequest;
 
 public record CancelInvoiceCommand(Guid InvoiceId) : IRequest;
 
-public class FinanceCommandHandler : 
+public class FinanceCommandHandler(EventStoreRepository<Invoice> invoiceRepo, EventStoreRepository<Payment> paymentRepo) :
     IRequestHandler<CreateInvoiceCommand, Guid>,
     IRequestHandler<RegisterPaymentCommand, Guid>,
     IRequestHandler<IssueInvoiceCommand>,
@@ -51,30 +50,21 @@ public class FinanceCommandHandler :
     IRequestHandler<WriteOffInvoiceCommand>,
     IRequestHandler<CancelInvoiceCommand>
 {
-    private readonly EventStoreRepository<Invoice> _invoiceRepo;
-    private readonly EventStoreRepository<Payment> _paymentRepo;
-
-    public FinanceCommandHandler(EventStoreRepository<Invoice> invoiceRepo, EventStoreRepository<Payment> paymentRepo)
-    {
-        _invoiceRepo = invoiceRepo;
-        _paymentRepo = paymentRepo;
-    }
-
     public async Task<Guid> Handle(CreateInvoiceCommand request, CancellationToken ct)
     {
-        var id = Guid.NewGuid();
-        var invoice = Invoice.Create(id, request.Number, request.Type, request.PartyId, request.PartyName, request.InvoiceDate, request.DueDate, request.Currency);
+        Guid id = Guid.NewGuid();
+        Invoice invoice = Invoice.Create(id, request.Number, request.Type, request.PartyId, request.PartyName, request.InvoiceDate, request.DueDate, request.Currency);
         invoice.UpdateLines(request.Lines);
         invoice.Issue(); // Auto-issue for simplicity? Or separate step? Let's auto-issue for now.
         
-        await _invoiceRepo.SaveAsync(invoice);
+        await invoiceRepo.SaveAsync(invoice);
         return id;
     }
 
     public async Task<Guid> Handle(RegisterPaymentCommand request, CancellationToken ct)
     {
-        var paymentId = Guid.NewGuid();
-        var payment = Payment.Create(
+        Guid paymentId = Guid.NewGuid();
+        Payment payment = Payment.Create(
             paymentId, 
             request.PaymentNumber, 
             request.Direction, 
@@ -88,7 +78,7 @@ public class FinanceCommandHandler :
 
         if (request.AllocateToInvoiceId.HasValue)
         {
-            var invoice = await _invoiceRepo.LoadAsync(request.AllocateToInvoiceId.Value);
+            Invoice? invoice = await invoiceRepo.LoadAsync(request.AllocateToInvoiceId.Value);
             if (invoice == null) throw new KeyNotFoundException($"Invoice {request.AllocateToInvoiceId} not found");
 
             // Allocate payment logic
@@ -107,45 +97,45 @@ public class FinanceCommandHandler :
             // essentially treating this Command as "Pay Invoice" shortcut.
             
             invoice.RecordPayment(paymentId, request.Amount, request.PaymentDate, request.Method, request.ReferenceNo);
-            await _invoiceRepo.SaveAsync(invoice);
+            await invoiceRepo.SaveAsync(invoice);
         }
 
-        await _paymentRepo.SaveAsync(payment);
+        await paymentRepo.SaveAsync(payment);
         return paymentId;
     }
 
     public async Task Handle(IssueInvoiceCommand r, CancellationToken ct)
     {
-        var invoice = await _invoiceRepo.LoadAsync(r.InvoiceId);
+        Invoice? invoice = await invoiceRepo.LoadAsync(r.InvoiceId);
         if (invoice == null) throw new KeyNotFoundException("Invoice not found");
         invoice.Issue();
-        await _invoiceRepo.SaveAsync(invoice);
+        await invoiceRepo.SaveAsync(invoice);
     }
 
     public async Task<Guid> Handle(RecordPaymentCommand r, CancellationToken ct)
     {
-        var invoice = await _invoiceRepo.LoadAsync(r.InvoiceId);
+        Invoice? invoice = await invoiceRepo.LoadAsync(r.InvoiceId);
         if (invoice == null) throw new KeyNotFoundException("Invoice not found");
         
-        var paymentId = Guid.NewGuid();
+        Guid paymentId = Guid.NewGuid();
         invoice.RecordPayment(paymentId, r.Amount, r.PaymentDate, r.Method, r.ReferenceNo);
-        await _invoiceRepo.SaveAsync(invoice);
+        await invoiceRepo.SaveAsync(invoice);
         return paymentId;
     }
 
     public async Task Handle(WriteOffInvoiceCommand r, CancellationToken ct)
     {
-        var invoice = await _invoiceRepo.LoadAsync(r.InvoiceId);
+        Invoice? invoice = await invoiceRepo.LoadAsync(r.InvoiceId);
         if (invoice == null) throw new KeyNotFoundException("Invoice not found");
         invoice.WriteOff(r.Reason);
-        await _invoiceRepo.SaveAsync(invoice);
+        await invoiceRepo.SaveAsync(invoice);
     }
 
     public async Task Handle(CancelInvoiceCommand r, CancellationToken ct)
     {
-        var invoice = await _invoiceRepo.LoadAsync(r.InvoiceId);
+        Invoice? invoice = await invoiceRepo.LoadAsync(r.InvoiceId);
         if (invoice == null) throw new KeyNotFoundException("Invoice not found");
         invoice.Cancel();
-        await _invoiceRepo.SaveAsync(invoice);
+        await invoiceRepo.SaveAsync(invoice);
     }
 }

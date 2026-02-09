@@ -8,74 +8,66 @@ namespace ErpSystem.Finance.API;
 
 [ApiController]
 [Route("api/v1/finance/invoices")]
-public class InvoicesController : ControllerBase
+public class InvoicesController(IMediator mediator, FinanceReadDbContext readDb) : ControllerBase
 {
-    private readonly IMediator _mediator;
-    private readonly FinanceReadDbContext _readDb;
-
-    public InvoicesController(IMediator mediator, FinanceReadDbContext readDb)
-    {
-        _mediator = mediator;
-        _readDb = readDb;
-    }
-
     [HttpPost]
     public async Task<IActionResult> Create(CreateInvoiceCommand command)
     {
-        var id = await _mediator.Send(command);
-        return Ok(id);
+        Guid id = await mediator.Send(command);
+        return this.Ok(id);
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll() => Ok(await _readDb.Invoices.ToListAsync());
+    public async Task<IActionResult> GetAll() => this.Ok(await readDb.Invoices.ToListAsync());
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(Guid id) => Ok(await _readDb.Invoices.FindAsync(id));
+    public async Task<IActionResult> GetById(Guid id) => this.Ok(await readDb.Invoices.FindAsync(id));
 
     [HttpPost("{id}/issue")]
     public async Task<IActionResult> Issue(Guid id)
     {
-        await _mediator.Send(new IssueInvoiceCommand(id));
-        return NoContent();
+        await mediator.Send(new IssueInvoiceCommand(id));
+        return this.NoContent();
     }
 
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(Guid id)
     {
-        await _mediator.Send(new CancelInvoiceCommand(id));
-        return NoContent();
+        await mediator.Send(new CancelInvoiceCommand(id));
+        return this.NoContent();
     }
 
     [HttpPost("{id}/write-off")]
     public async Task<IActionResult> WriteOff(Guid id, [FromBody] string reason)
     {
-        await _mediator.Send(new WriteOffInvoiceCommand(id, reason));
-        return NoContent();
+        await mediator.Send(new WriteOffInvoiceCommand(id, reason));
+        return this.NoContent();
     }
 
     [HttpPost("{id}/payments")]
     public async Task<IActionResult> RecordPayment(Guid id, RecordPaymentCommand command)
     {
-        if (id != command.InvoiceId) return BadRequest();
-        var paymentId = await _mediator.Send(command);
-        return Ok(paymentId);
+        if (id != command.InvoiceId) return this.BadRequest();
+        Guid paymentId = await mediator.Send(command);
+        return this.Ok(paymentId);
     }
 
     [HttpGet("{id}/payments")]
     public async Task<IActionResult> GetPayments(Guid id) 
-        => Ok(await _readDb.Payments.Where(p => p.InvoiceId == id).ToListAsync());
+        =>
+            this.Ok(await readDb.Payments.Where(p => p.InvoiceId == id).ToListAsync());
 
     [HttpGet("aging-analysis")]
     public async Task<IActionResult> GetAgingAnalysis([FromQuery] int type, [FromQuery] DateTime? asOf, [FromQuery] string? partyId)
     {
-        var result = await _mediator.Send(new GetAgingAnalysisQuery(type, asOf ?? DateTime.UtcNow, partyId));
-        return Ok(result);
+        List<AgingBucket> result = await mediator.Send(new GetAgingAnalysisQuery(type, asOf ?? DateTime.UtcNow, partyId));
+        return this.Ok(result);
     }
 
     [HttpGet("overdue")]
     public async Task<IActionResult> GetOverdueInvoices([FromQuery] int type, [FromQuery] DateTime? asOf, [FromQuery] string? partyId)
     {
-        var result = await _mediator.Send(new GetOverdueInvoicesQuery(type, asOf ?? DateTime.UtcNow, partyId));
-        return Ok(result);
+        List<InvoiceReadModel> result = await mediator.Send(new GetOverdueInvoicesQuery(type, asOf ?? DateTime.UtcNow, partyId));
+        return this.Ok(result);
     }
 }

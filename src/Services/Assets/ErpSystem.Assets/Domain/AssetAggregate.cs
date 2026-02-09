@@ -10,6 +10,8 @@ public enum AssetType
     Equipment = 1,       // 设备
     Vehicle = 2,         // 车辆
     Furniture = 3,       // 办公家具
+
+    // ReSharper disable once InconsistentNaming
     IT = 4,              // IT设备
     Building = 5,        // 建筑物
     Land = 6,            // 土地
@@ -192,8 +194,10 @@ public class Asset : AggregateRoot<Guid>
     // Depreciation
     public DepreciationMethod DepreciationMethod { get; private set; }
     public int UsefulLifeMonths { get; private set; }
-    public decimal MonthlyDepreciation => DepreciationMethod == DepreciationMethod.StraightLine
-        ? (AcquisitionCost - SalvageValue) / UsefulLifeMonths
+
+    public decimal MonthlyDepreciation =>
+        this.DepreciationMethod == DepreciationMethod.StraightLine
+        ? (this.AcquisitionCost - this.SalvageValue) / this.UsefulLifeMonths
         : 0;
     
     // Location
@@ -202,17 +206,17 @@ public class Asset : AggregateRoot<Guid>
     public string? AssignedToUserId { get; private set; }
     
     // History
-    public List<MaintenanceRecord> MaintenanceRecords { get; private set; } = new();
-    public List<DepreciationSchedule> DepreciationSchedules { get; private set; } = new();
-    public List<AssetTransfer> TransferHistory { get; private set; } = new();
+    public List<MaintenanceRecord> MaintenanceRecords { get; private set; } = [];
+    public List<DepreciationSchedule> DepreciationSchedules { get; private set; } = [];
+    public List<AssetTransfer> TransferHistory { get; private set; } = [];
     
     public DateTime CreatedAt { get; private set; }
     public DateTime? DisposedAt { get; private set; }
 
     // Calculated properties
-    public decimal BookValue => AcquisitionCost - AccumulatedDepreciation;
-    public decimal TotalMaintenanceCost => MaintenanceRecords.Sum(m => m.Cost);
-    public bool IsFullyDepreciated => BookValue <= SalvageValue;
+    public decimal BookValue => this.AcquisitionCost - this.AccumulatedDepreciation;
+    public decimal TotalMaintenanceCost => this.MaintenanceRecords.Sum(m => m.Cost);
+    public bool IsFullyDepreciated => this.BookValue <= this.SalvageValue;
 
     public static Asset Register(
         Guid id,
@@ -227,7 +231,7 @@ public class Asset : AggregateRoot<Guid>
         decimal salvageValue,
         string? description = null)
     {
-        var asset = new Asset();
+        Asset asset = new Asset();
         asset.ApplyChange(new AssetRegisteredEvent(
             id, assetNumber, name, type, description, 
             acquisitionCost, acquisitionDate, locationId,
@@ -237,64 +241,63 @@ public class Asset : AggregateRoot<Guid>
 
     public void Activate()
     {
-        if (Status != AssetStatus.Draft)
+        if (this.Status != AssetStatus.Draft)
             throw new InvalidOperationException("Only draft assets can be activated");
-        
-        ApplyChange(new AssetActivatedEvent(Id, DateTime.UtcNow));
+
+        this.ApplyChange(new AssetActivatedEvent(this.Id, DateTime.UtcNow));
     }
 
     public void Transfer(string toLocationId, string? toDepartmentId, string reason)
     {
-        if (Status == AssetStatus.Disposed)
+        if (this.Status == AssetStatus.Disposed)
             throw new InvalidOperationException("Cannot transfer disposed asset");
 
-        ApplyChange(new AssetTransferredEvent(
-            Id, LocationId, toLocationId, DepartmentId, toDepartmentId, reason, DateTime.UtcNow));
+        this.ApplyChange(new AssetTransferredEvent(this.Id, this.LocationId, toLocationId, this.DepartmentId, toDepartmentId, reason, DateTime.UtcNow));
     }
 
     public void RecordMaintenance(MaintenanceType type, string description, DateTime maintenanceDate, decimal cost, string? performedBy)
     {
-        if (Status == AssetStatus.Disposed)
+        if (this.Status == AssetStatus.Disposed)
             throw new InvalidOperationException("Cannot record maintenance for disposed asset");
 
-        var maintenanceId = Guid.NewGuid();
-        ApplyChange(new MaintenanceRecordedEvent(Id, maintenanceId, type, description, maintenanceDate, cost, performedBy));
+        Guid maintenanceId = Guid.NewGuid();
+        this.ApplyChange(new MaintenanceRecordedEvent(this.Id, maintenanceId, type, description, maintenanceDate, cost, performedBy));
     }
 
     public void CalculateDepreciation(int year, int month)
     {
-        if (DepreciationMethod == DepreciationMethod.None || IsFullyDepreciated)
+        if (this.DepreciationMethod == DepreciationMethod.None || this.IsFullyDepreciated)
             return;
 
-        var depreciationAmount = MonthlyDepreciation;
-        var newAccumulated = AccumulatedDepreciation + depreciationAmount;
-        var newBookValue = AcquisitionCost - newAccumulated;
+        decimal depreciationAmount = this.MonthlyDepreciation;
+        decimal newAccumulated = this.AccumulatedDepreciation + depreciationAmount;
+        decimal newBookValue = this.AcquisitionCost - newAccumulated;
 
-        if (newBookValue < SalvageValue)
+        if (newBookValue < this.SalvageValue)
         {
-            depreciationAmount = BookValue - SalvageValue;
-            newAccumulated = AcquisitionCost - SalvageValue;
-            newBookValue = SalvageValue;
+            depreciationAmount = this.BookValue - this.SalvageValue;
+            newAccumulated = this.AcquisitionCost - this.SalvageValue;
+            newBookValue = this.SalvageValue;
         }
 
-        ApplyChange(new DepreciationCalculatedEvent(Id, year, month, depreciationAmount, newAccumulated, newBookValue));
+        this.ApplyChange(new DepreciationCalculatedEvent(this.Id, year, month, depreciationAmount, newAccumulated, newBookValue));
     }
 
     public void Dispose(decimal disposalValue, string disposalMethod, string reason)
     {
-        if (Status == AssetStatus.Disposed)
+        if (this.Status == AssetStatus.Disposed)
             throw new InvalidOperationException("Asset already disposed");
 
-        var gainOrLoss = disposalValue - BookValue;
-        ApplyChange(new AssetDisposedEvent(Id, DateTime.UtcNow, disposalValue, disposalMethod, reason, gainOrLoss));
+        decimal gainOrLoss = disposalValue - this.BookValue;
+        this.ApplyChange(new AssetDisposedEvent(this.Id, DateTime.UtcNow, disposalValue, disposalMethod, reason, gainOrLoss));
     }
 
     public void Revalue(decimal newValue, string reason)
     {
-        if (Status == AssetStatus.Disposed)
+        if (this.Status == AssetStatus.Disposed)
             throw new InvalidOperationException("Cannot revalue disposed asset");
 
-        ApplyChange(new AssetRevaluedEvent(Id, CurrentValue, newValue, reason, DateTime.UtcNow));
+        this.ApplyChange(new AssetRevaluedEvent(this.Id, this.CurrentValue, newValue, reason, DateTime.UtcNow));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -302,49 +305,49 @@ public class Asset : AggregateRoot<Guid>
         switch (@event)
         {
             case AssetRegisteredEvent e:
-                Id = e.AssetId;
-                AssetNumber = e.AssetNumber;
-                Name = e.Name;
-                Type = e.Type;
-                Description = e.Description;
-                AcquisitionCost = e.AcquisitionCost;
-                AcquisitionDate = e.AcquisitionDate;
-                CurrentValue = e.AcquisitionCost;
-                LocationId = e.LocationId;
-                DepreciationMethod = e.DepreciationMethod;
-                UsefulLifeMonths = e.UsefulLifeMonths;
-                SalvageValue = e.SalvageValue;
-                Status = AssetStatus.Draft;
-                CreatedAt = e.OccurredOn;
+                this.Id = e.AssetId;
+                this.AssetNumber = e.AssetNumber;
+                this.Name = e.Name;
+                this.Type = e.Type;
+                this.Description = e.Description;
+                this.AcquisitionCost = e.AcquisitionCost;
+                this.AcquisitionDate = e.AcquisitionDate;
+                this.CurrentValue = e.AcquisitionCost;
+                this.LocationId = e.LocationId;
+                this.DepreciationMethod = e.DepreciationMethod;
+                this.UsefulLifeMonths = e.UsefulLifeMonths;
+                this.SalvageValue = e.SalvageValue;
+                this.Status = AssetStatus.Draft;
+                this.CreatedAt = e.OccurredOn;
                 break;
 
-            case AssetActivatedEvent e:
-                Status = AssetStatus.Active;
+            case AssetActivatedEvent:
+                this.Status = AssetStatus.Active;
                 break;
 
             case AssetTransferredEvent e:
-                LocationId = e.ToLocationId;
-                DepartmentId = e.ToDepartmentId;
-                TransferHistory.Add(new AssetTransfer(e.TransferDate, e.FromLocationId, e.ToLocationId, e.Reason));
+                this.LocationId = e.ToLocationId;
+                this.DepartmentId = e.ToDepartmentId;
+                this.TransferHistory.Add(new AssetTransfer(e.TransferDate, e.FromLocationId, e.ToLocationId, e.Reason));
                 break;
 
             case MaintenanceRecordedEvent e:
-                MaintenanceRecords.Add(new MaintenanceRecord(e.MaintenanceId, e.Type, e.Description, e.MaintenanceDate, e.Cost, e.PerformedBy));
+                this.MaintenanceRecords.Add(new MaintenanceRecord(e.MaintenanceId, e.Type, e.Description, e.MaintenanceDate, e.Cost, e.PerformedBy));
                 break;
 
             case DepreciationCalculatedEvent e:
-                AccumulatedDepreciation = e.AccumulatedDepreciation;
-                CurrentValue = e.BookValue;
-                DepreciationSchedules.Add(new DepreciationSchedule(e.Year, e.Month, e.DepreciationAmount, e.AccumulatedDepreciation, e.BookValue));
+                this.AccumulatedDepreciation = e.AccumulatedDepreciation;
+                this.CurrentValue = e.BookValue;
+                this.DepreciationSchedules.Add(new DepreciationSchedule(e.Year, e.Month, e.DepreciationAmount, e.AccumulatedDepreciation, e.BookValue));
                 break;
 
             case AssetDisposedEvent e:
-                Status = AssetStatus.Disposed;
-                DisposedAt = e.DisposalDate;
+                this.Status = AssetStatus.Disposed;
+                this.DisposedAt = e.DisposalDate;
                 break;
 
             case AssetRevaluedEvent e:
-                CurrentValue = e.NewValue;
+                this.CurrentValue = e.NewValue;
                 break;
         }
     }

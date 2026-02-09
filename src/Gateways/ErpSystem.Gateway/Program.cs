@@ -1,15 +1,11 @@
-using ErpSystem.BuildingBlocks.EventBus;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.DependencyInjection;
 using Polly;
-using Polly.Retry;
-using Polly.CircuitBreaker; // Required for CircuitBreakerStrategyOptions
 
-var builder = WebApplication.CreateBuilder(args);
+// Required for CircuitBreakerStrategyOptions
+
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // builder.Services.AddDaprEventBus();
 
-var proxyConfig = builder.Configuration.GetSection("ReverseProxy");
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -69,7 +65,7 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddHealthChecks();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 app.UseCors();
 
@@ -83,14 +79,14 @@ app.UseHttpsRedirection();
 app.MapReverseProxy();
 app.MapHealthChecks("/health");
 
-var summaries = new[]
-{
+string[] summaries =
+[
     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+];
 
 app.MapGet("/weatherforecast", () =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    WeatherForecast[] forecast =  Enumerable.Range(1, 5).Select(index =>
         new WeatherForecast
         (
             DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
@@ -106,5 +102,5 @@ app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+    public int TemperatureF => 32 + (int)(this.TemperatureC / 0.5556);
 }

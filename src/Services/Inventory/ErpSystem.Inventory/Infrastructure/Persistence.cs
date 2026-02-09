@@ -3,11 +3,9 @@ using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.Inventory.Infrastructure;
 
-public class InventoryEventStoreDbContext : DbContext
+public class InventoryEventStoreDbContext(DbContextOptions<InventoryEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public InventoryEventStoreDbContext(DbContextOptions<InventoryEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,13 +17,11 @@ public class InventoryEventStoreDbContext : DbContext
     }
 }
 
-public class InventoryReadDbContext : DbContext
+public class InventoryReadDbContext(DbContextOptions<InventoryReadDbContext> options) : DbContext(options)
 {
     public DbSet<InventoryItemReadModel> InventoryItems { get; set; } = null!;
     public DbSet<StockTransactionReadModel> StockTransactions { get; set; } = null!;
     public DbSet<StockReservationReadModel> StockReservations { get; set; } = null!;
-
-    public InventoryReadDbContext(DbContextOptions<InventoryReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

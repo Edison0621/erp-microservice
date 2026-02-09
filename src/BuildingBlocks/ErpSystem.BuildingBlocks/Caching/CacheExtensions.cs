@@ -13,7 +13,7 @@ public static class DistributedCacheExtensions
         string key,
         CancellationToken cancellationToken = default) where T : class
     {
-        var data = await cache.GetStringAsync(key, cancellationToken);
+        string? data = await cache.GetStringAsync(key, cancellationToken);
         return data is null ? null : JsonSerializer.Deserialize<T>(data);
     }
 
@@ -25,13 +25,13 @@ public static class DistributedCacheExtensions
         TimeSpan? slidingExpiration = null,
         CancellationToken cancellationToken = default) where T : class
     {
-        var options = new DistributedCacheEntryOptions
+        DistributedCacheEntryOptions options = new DistributedCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = absoluteExpiration,
             SlidingExpiration = slidingExpiration
         };
 
-        var serialized = JsonSerializer.Serialize(value);
+        string serialized = JsonSerializer.Serialize(value);
         await cache.SetStringAsync(key, serialized, options, cancellationToken);
     }
 
@@ -42,13 +42,13 @@ public static class DistributedCacheExtensions
         TimeSpan? absoluteExpiration = null,
         CancellationToken cancellationToken = default) where T : class
     {
-        var cached = await cache.GetAsync<T>(key, cancellationToken);
+        T? cached = await cache.GetAsync<T>(key, cancellationToken);
         if (cached is not null)
         {
             return cached;
         }
 
-        var value = await factory();
+        T value = await factory();
         await cache.SetAsync(key, value, absoluteExpiration, null, cancellationToken);
         return value;
     }
@@ -61,7 +61,7 @@ public static class CacheKeyBuilder
 {
     public static string Build(string category, params object[] parts)
     {
-        var keyParts = new List<string> { category };
+        List<string> keyParts = [category];
         keyParts.AddRange(parts.Select(p => p?.ToString() ?? "null"));
         return string.Join(":", keyParts);
     }

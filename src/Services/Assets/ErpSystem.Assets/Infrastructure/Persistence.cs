@@ -5,11 +5,9 @@ namespace ErpSystem.Assets.Infrastructure;
 
 #region Event Store DbContext
 
-public class AssetsEventStoreDbContext : DbContext
+public class AssetsEventStoreDbContext(DbContextOptions<AssetsEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public AssetsEventStoreDbContext(DbContextOptions<AssetsEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,13 +23,11 @@ public class AssetsEventStoreDbContext : DbContext
 
 #region Read DbContext
 
-public class AssetsReadDbContext : DbContext
+public class AssetsReadDbContext(DbContextOptions<AssetsReadDbContext> options) : DbContext(options)
 {
     public DbSet<AssetReadModel> Assets { get; set; } = null!;
     public DbSet<MaintenanceReadModel> MaintenanceRecords { get; set; } = null!;
     public DbSet<DepreciationReadModel> DepreciationRecords { get; set; } = null!;
-
-    public AssetsReadDbContext(DbContextOptions<AssetsReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

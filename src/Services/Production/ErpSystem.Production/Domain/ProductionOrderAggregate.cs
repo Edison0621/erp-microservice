@@ -77,36 +77,36 @@ public class ProductionOrder : AggregateRoot<Guid>
         string materialName, 
         decimal plannedQuantity)
     {
-        var order = new ProductionOrder();
+        ProductionOrder order = new ProductionOrder();
         order.ApplyChange(new ProductionOrderCreatedEvent(id, orderNumber, materialId, materialCode, materialName, plannedQuantity, DateTime.UtcNow));
         return order;
     }
 
     public void Release()
     {
-        if (Status != ProductionOrderStatus.Created)
+        if (this.Status != ProductionOrderStatus.Created)
             throw new InvalidOperationException("Only Created orders can be released");
-        ApplyChange(new ProductionOrderReleasedEvent(Id));
+        this.ApplyChange(new ProductionOrderReleasedEvent(this.Id));
     }
 
     public void ConsumeMaterial(string materialId, string warehouseId, decimal quantity, string consumedBy)
     {
-        if (Status != ProductionOrderStatus.Released && Status != ProductionOrderStatus.InProgress)
+        if (this.Status != ProductionOrderStatus.Released && this.Status != ProductionOrderStatus.InProgress)
             throw new InvalidOperationException("Order must be released or in progress to consume material");
-            
-        ApplyChange(new MaterialConsumedEvent(Id, materialId, warehouseId, quantity, consumedBy));
+
+        this.ApplyChange(new MaterialConsumedEvent(this.Id, materialId, warehouseId, quantity, consumedBy));
     }
 
     public void ReportProduction(decimal goodQuantity, decimal scrapQuantity, string warehouseId, string reportedBy)
     {
-        if (Status != ProductionOrderStatus.Released && Status != ProductionOrderStatus.InProgress && Status != ProductionOrderStatus.PartiallyCompleted)
+        if (this.Status != ProductionOrderStatus.Released && this.Status != ProductionOrderStatus.InProgress && this.Status != ProductionOrderStatus.PartiallyCompleted)
             throw new InvalidOperationException("Order state invalid for reporting");
 
-        ApplyChange(new ProductionReportedEvent(Id, goodQuantity, scrapQuantity, warehouseId, reportedBy));
+        this.ApplyChange(new ProductionReportedEvent(this.Id, goodQuantity, scrapQuantity, warehouseId, reportedBy));
 
-        if (ReportedQuantity >= PlannedQuantity)
+        if (this.ReportedQuantity >= this.PlannedQuantity)
         {
-            ApplyChange(new ProductionOrderCompletedEvent(Id));
+            this.ApplyChange(new ProductionOrderCompletedEvent(this.Id));
         }
     }
 
@@ -115,27 +115,26 @@ public class ProductionOrder : AggregateRoot<Guid>
         switch (@event)
         {
             case ProductionOrderCreatedEvent e:
-                Id = e.OrderId;
-                OrderNumber = e.OrderNumber;
-                MaterialId = e.MaterialId;
-                PlannedQuantity = e.PlannedQuantity;
-                Status = ProductionOrderStatus.Created;
+                this.Id = e.OrderId;
+                this.OrderNumber = e.OrderNumber;
+                this.MaterialId = e.MaterialId;
+                this.PlannedQuantity = e.PlannedQuantity;
+                this.Status = ProductionOrderStatus.Created;
                 break;
             case ProductionOrderReleasedEvent:
-                Status = ProductionOrderStatus.Released;
+                this.Status = ProductionOrderStatus.Released;
                 break;
             case MaterialConsumedEvent:
-                if (Status == ProductionOrderStatus.Released) Status = ProductionOrderStatus.InProgress;
+                if (this.Status == ProductionOrderStatus.Released) this.Status = ProductionOrderStatus.InProgress;
                 break;
             case ProductionReportedEvent e:
-                if (Status == ProductionOrderStatus.Released) Status = ProductionOrderStatus.InProgress;
-                ReportedQuantity += e.GoodQuantity;
-                ScrappedQuantity += e.ScrapQuantity;
-                if (ReportedQuantity > 0 && ReportedQuantity < PlannedQuantity)
-                    Status = ProductionOrderStatus.PartiallyCompleted;
+                if (this.Status == ProductionOrderStatus.Released) this.Status = ProductionOrderStatus.InProgress;
+                this.ReportedQuantity += e.GoodQuantity;
+                this.ScrappedQuantity += e.ScrapQuantity;
+                if (this.ReportedQuantity > 0 && this.ReportedQuantity < this.PlannedQuantity) this.Status = ProductionOrderStatus.PartiallyCompleted;
                 break;
             case ProductionOrderCompletedEvent:
-                Status = ProductionOrderStatus.Completed;
+                this.Status = ProductionOrderStatus.Completed;
                 break;
         }
     }

@@ -35,7 +35,7 @@ public class MaterialCategory : AggregateRoot<Guid>
     {
         if (level > 5) throw new ArgumentException("Category depth cannot exceed 5 levels");
         
-        var category = new MaterialCategory();
+        MaterialCategory category = new MaterialCategory();
         category.ApplyChange(new CategoryCreatedEvent(id, code, name, parentId, level));
         return category;
     }
@@ -43,7 +43,7 @@ public class MaterialCategory : AggregateRoot<Guid>
     public void Move(Guid? newParentId, int newLevel)
     {
         if (newLevel > 5) throw new ArgumentException("Category depth cannot exceed 5 levels");
-        ApplyChange(new CategoryMovedEvent(Id, newParentId, newLevel));
+        this.ApplyChange(new CategoryMovedEvent(this.Id, newParentId, newLevel));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -51,15 +51,15 @@ public class MaterialCategory : AggregateRoot<Guid>
         switch (@event)
         {
             case CategoryCreatedEvent e:
-                Id = e.CategoryId;
-                Code = e.Code;
-                Name = e.Name;
-                ParentId = e.ParentId;
-                Level = e.Level;
+                this.Id = e.CategoryId;
+                this.Code = e.Code;
+                this.Name = e.Name;
+                this.ParentId = e.ParentId;
+                this.Level = e.Level;
                 break;
             case CategoryMovedEvent e:
-                ParentId = e.NewParentId;
-                Level = e.NewLevel;
+                this.ParentId = e.NewParentId;
+                this.Level = e.NewLevel;
                 break;
         }
     }

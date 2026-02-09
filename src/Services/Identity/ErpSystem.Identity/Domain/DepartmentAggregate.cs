@@ -24,16 +24,16 @@ public class Department : AggregateRoot<Guid>
 
     public static Department Create(Guid id, string name, string parentId, int order)
     {
-        var dept = new Department();
+        Department dept = new Department();
         dept.ApplyChange(new DepartmentCreatedEvent(id, name, parentId, order));
         return dept;
     }
 
     public void Move(string newParentId)
     {
-        if (ParentId != newParentId)
+        if (this.ParentId != newParentId)
         {
-            ApplyChange(new DepartmentMovedEvent(Id, newParentId));
+            this.ApplyChange(new DepartmentMovedEvent(this.Id, newParentId));
         }
     }
 
@@ -42,13 +42,13 @@ public class Department : AggregateRoot<Guid>
         switch (@event)
         {
             case DepartmentCreatedEvent e:
-                Id = e.DepartmentId;
-                Name = e.Name;
-                ParentId = e.ParentId;
-                Order = e.Order;
+                this.Id = e.DepartmentId;
+                this.Name = e.Name;
+                this.ParentId = e.ParentId;
+                this.Order = e.Order;
                 break;
             case DepartmentMovedEvent e:
-                ParentId = e.NewParentId;
+                this.ParentId = e.NewParentId;
                 break;
         }
     }

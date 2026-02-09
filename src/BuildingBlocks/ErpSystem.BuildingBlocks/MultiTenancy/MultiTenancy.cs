@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using System.Linq.Expressions;
+using System.Reflection;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata;
 
 namespace ErpSystem.BuildingBlocks.MultiTenancy;
 
@@ -10,7 +12,7 @@ namespace ErpSystem.BuildingBlocks.MultiTenancy;
 public interface ITenantContext
 {
     string? TenantId { get; }
-    bool HasTenant => !string.IsNullOrEmpty(TenantId);
+    bool HasTenant => !string.IsNullOrEmpty(this.TenantId);
 }
 
 /// <summary>
@@ -46,15 +48,15 @@ public static class MultiTenancyExtensions
         this ModelBuilder modelBuilder,
         ITenantContext tenantContext)
     {
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
         {
             if (typeof(IMultiTenantEntity).IsAssignableFrom(entityType.ClrType))
             {
-                var method = typeof(MultiTenancyExtensions)
+                MethodInfo method = typeof(MultiTenancyExtensions)
                     .GetMethod(nameof(ConfigureMultiTenancy))!
                     .MakeGenericMethod(entityType.ClrType);
                 
-                method.Invoke(null, new object[] { modelBuilder, tenantContext });
+                method.Invoke(null, [modelBuilder, tenantContext]);
             }
         }
     }
@@ -63,20 +65,13 @@ public static class MultiTenancyExtensions
 /// <summary>
 /// Interceptor to automatically set TenantId on new entities
 /// </summary>
-public class MultiTenantSaveChangesInterceptor : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+public class MultiTenantSaveChangesInterceptor(ITenantContext tenantContext) : SaveChangesInterceptor
 {
-    private readonly ITenantContext _tenantContext;
-
-    public MultiTenantSaveChangesInterceptor(ITenantContext tenantContext)
-    {
-        _tenantContext = tenantContext;
-    }
-
     public override InterceptionResult<int> SavingChanges(
         DbContextEventData eventData,
         InterceptionResult<int> result)
     {
-        SetTenantId(eventData.Context);
+        this.SetTenantId(eventData.Context);
         return base.SavingChanges(eventData, result);
     }
 
@@ -85,20 +80,20 @@ public class MultiTenantSaveChangesInterceptor : Microsoft.EntityFrameworkCore.D
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
-        SetTenantId(eventData.Context);
+        this.SetTenantId(eventData.Context);
         return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
     private void SetTenantId(DbContext? context)
     {
-        if (context is null || !_tenantContext.HasTenant) return;
+        if (context is null || !tenantContext.HasTenant) return;
 
-        var entries = context.ChangeTracker.Entries<IMultiTenantEntity>()
+        IEnumerable<EntityEntry<IMultiTenantEntity>> entries = context.ChangeTracker.Entries<IMultiTenantEntity>()
             .Where(e => e.State == EntityState.Added);
 
-        foreach (var entry in entries)
+        foreach (EntityEntry<IMultiTenantEntity> entry in entries)
         {
-            entry.Entity.TenantId = _tenantContext.TenantId!;
+            entry.Entity.TenantId = tenantContext.TenantId!;
         }
     }
 }

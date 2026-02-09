@@ -98,7 +98,7 @@ public class Employee : AggregateRoot<Guid>
         string managerEmployeeId, 
         string costCenterId)
     {
-        var employee = new Employee();
+        Employee employee = new Employee();
         employee.ApplyChange(new EmployeeHiredEvent(
             id, employeeNumber, fullName, gender, dateOfBirth, idType, idNumber, 
             hireDate, employmentType, companyId, departmentId, positionId, managerEmployeeId, costCenterId));
@@ -107,20 +107,20 @@ public class Employee : AggregateRoot<Guid>
 
     public void Transfer(string toDepartmentId, string toPositionId, DateTime effectiveDate, string reason)
     {
-        if (Status == EmployeeStatus.Terminated) throw new InvalidOperationException("Cannot transfer a terminated employee");
-        ApplyChange(new EmployeeTransferredEvent(Id, DepartmentId, toDepartmentId, PositionId, toPositionId, effectiveDate, reason));
+        if (this.Status == EmployeeStatus.Terminated) throw new InvalidOperationException("Cannot transfer a terminated employee");
+        this.ApplyChange(new EmployeeTransferredEvent(this.Id, this.DepartmentId, toDepartmentId, this.PositionId, toPositionId, effectiveDate, reason));
     }
 
     public void Promote(string toPositionId, DateTime effectiveDate, string reason)
     {
-        if (Status == EmployeeStatus.Terminated) throw new InvalidOperationException("Cannot promote a terminated employee");
-        ApplyChange(new EmployeePromotedEvent(Id, PositionId, toPositionId, effectiveDate, reason));
+        if (this.Status == EmployeeStatus.Terminated) throw new InvalidOperationException("Cannot promote a terminated employee");
+        this.ApplyChange(new EmployeePromotedEvent(this.Id, this.PositionId, toPositionId, effectiveDate, reason));
     }
 
     public void Terminate(DateTime terminationDate, string reason, string note)
     {
-        if (Status == EmployeeStatus.Terminated) throw new InvalidOperationException("Employee already terminated");
-        ApplyChange(new EmployeeTerminatedEvent(Id, terminationDate, reason, note));
+        if (this.Status == EmployeeStatus.Terminated) throw new InvalidOperationException("Employee already terminated");
+        this.ApplyChange(new EmployeeTerminatedEvent(this.Id, terminationDate, reason, note));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -128,22 +128,22 @@ public class Employee : AggregateRoot<Guid>
         switch (@event)
         {
             case EmployeeHiredEvent e:
-                Id = e.EmployeeId;
-                EmployeeNumber = e.EmployeeNumber;
-                FullName = e.FullName;
-                DepartmentId = e.DepartmentId;
-                PositionId = e.PositionId;
-                Status = EmployeeStatus.Active;
+                this.Id = e.EmployeeId;
+                this.EmployeeNumber = e.EmployeeNumber;
+                this.FullName = e.FullName;
+                this.DepartmentId = e.DepartmentId;
+                this.PositionId = e.PositionId;
+                this.Status = EmployeeStatus.Active;
                 break;
             case EmployeeTransferredEvent e:
-                DepartmentId = e.ToDepartmentId;
-                PositionId = e.ToPositionId;
+                this.DepartmentId = e.ToDepartmentId;
+                this.PositionId = e.ToPositionId;
                 break;
             case EmployeePromotedEvent e:
-                PositionId = e.ToPositionId;
+                this.PositionId = e.ToPositionId;
                 break;
             case EmployeeTerminatedEvent:
-                Status = EmployeeStatus.Terminated;
+                this.Status = EmployeeStatus.Terminated;
                 break;
         }
     }

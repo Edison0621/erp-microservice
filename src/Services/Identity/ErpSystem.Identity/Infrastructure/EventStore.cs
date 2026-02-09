@@ -3,11 +3,9 @@ using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.Identity.Infrastructure;
 
-public class EventStoreDbContext : DbContext
+public class EventStoreDbContext(DbContextOptions<EventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> EventStreams { get; set; } = null!;
-
-    public EventStoreDbContext(DbContextOptions<EventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

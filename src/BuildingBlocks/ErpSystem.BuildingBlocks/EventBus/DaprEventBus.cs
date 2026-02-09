@@ -8,36 +8,23 @@ public interface IEventBus
     Task PublishAsync<T>(T @event, CancellationToken cancellationToken = default) where T : class;
 }
 
-public class DaprEventBus : IEventBus
+public class DaprEventBus(DaprClient dapr) : IEventBus
 {
-    private readonly DaprClient _dapr;
-    private const string PUBSUB_NAME = "pubsub"; 
-
-    public DaprEventBus(DaprClient dapr)
-    {
-        _dapr = dapr;
-    }
+    private const string PubSubName = "pubsub";
 
     public async Task PublishAsync<T>(T @event, CancellationToken cancellationToken = default) where T : class
     {
         // Topic convention: Type Name
-        var topicName = typeof(T).Name;
-        await _dapr.PublishEventAsync(PUBSUB_NAME, topicName, @event, cancellationToken);
+        string topicName = typeof(T).Name;
+        await dapr.PublishEventAsync(PubSubName, topicName, @event, cancellationToken);
     }
 }
 
-public class DummyEventBus : IEventBus
+public class DummyEventBus(ILogger<DummyEventBus> logger) : IEventBus
 {
-    private readonly ILogger<DummyEventBus> _logger;
-
-    public DummyEventBus(ILogger<DummyEventBus> logger)
-    {
-        _logger = logger;
-    }
-
     public Task PublishAsync<T>(T @event, CancellationToken cancellationToken = default) where T : class
     {
-        _logger.LogInformation("DummyEventBus: Publishing event {EventName}", typeof(T).Name);
+        logger.LogInformation("DummyEventBus: Publishing event {EventName}", typeof(T).Name);
         return Task.CompletedTask;
     }
 }

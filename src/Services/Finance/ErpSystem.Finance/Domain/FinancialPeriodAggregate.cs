@@ -32,21 +32,21 @@ public class FinancialPeriod : AggregateRoot<Guid>
 
     public static FinancialPeriod Define(Guid id, int year, int number, DateTime start, DateTime end)
     {
-        var period = new FinancialPeriod();
+        FinancialPeriod period = new FinancialPeriod();
         period.ApplyChange(new FinancialPeriodDefinedEvent(id, year, number, start, end));
         return period;
     }
 
     public void Close()
     {
-        if (IsClosed) return;
-        ApplyChange(new FinancialPeriodClosedEvent(Id));
+        if (this.IsClosed) return;
+        this.ApplyChange(new FinancialPeriodClosedEvent(this.Id));
     }
 
     public void Reopen()
     {
-        if (!IsClosed) return;
-        ApplyChange(new FinancialPeriodReopenedEvent(Id));
+        if (!this.IsClosed) return;
+        this.ApplyChange(new FinancialPeriodReopenedEvent(this.Id));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -54,18 +54,18 @@ public class FinancialPeriod : AggregateRoot<Guid>
         switch (@event)
         {
             case FinancialPeriodDefinedEvent e:
-                Id = e.PeriodId;
-                Year = e.Year;
-                PeriodNumber = e.PeriodNumber;
-                StartDate = e.StartDate;
-                EndDate = e.EndDate;
-                IsClosed = false;
+                this.Id = e.PeriodId;
+                this.Year = e.Year;
+                this.PeriodNumber = e.PeriodNumber;
+                this.StartDate = e.StartDate;
+                this.EndDate = e.EndDate;
+                this.IsClosed = false;
                 break;
             case FinancialPeriodClosedEvent:
-                IsClosed = true;
+                this.IsClosed = true;
                 break;
             case FinancialPeriodReopenedEvent:
-                IsClosed = false;
+                this.IsClosed = false;
                 break;
         }
     }

@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using ErpSystem.CRM.Domain;
 using ErpSystem.CRM.Infrastructure;
 using MediatR;
 
@@ -11,7 +10,7 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Add service defaults
 
@@ -48,18 +47,16 @@ public class Program
             c.SwaggerDoc("v1", new() { Title = "ERP System - CRM Service", Version = "v1" });
         });
 
-        var app = builder.Build();
+        WebApplication app = builder.Build();
 
         // Ensure databases created
         if (!app.Environment.IsEnvironment("Testing"))
         {
-            using (var scope = app.Services.CreateScope())
-            {
-                var es = scope.ServiceProvider.GetRequiredService<CrmEventStoreDbContext>();
-                await es.Database.EnsureCreatedAsync();
-                var rs = scope.ServiceProvider.GetRequiredService<CrmReadDbContext>();
-                await rs.Database.EnsureCreatedAsync();
-            }
+            using IServiceScope scope = app.Services.CreateScope();
+            CrmEventStoreDbContext es = scope.ServiceProvider.GetRequiredService<CrmEventStoreDbContext>();
+            await es.Database.EnsureCreatedAsync();
+            CrmReadDbContext rs = scope.ServiceProvider.GetRequiredService<CrmReadDbContext>();
+            await rs.Database.EnsureCreatedAsync();
         }
 
         if (app.Environment.IsDevelopment())

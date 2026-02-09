@@ -2,90 +2,84 @@ using MediatR;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Procurement.Domain;
-using ErpSystem.Procurement.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.Procurement.Application;
 
-public record CreatePOCommand(
+public record CreatePoCommand(
     string SupplierId, 
     string SupplierName, 
     DateTime OrderDate, 
     string Currency, 
     List<PurchaseOrderLine> Lines) : IRequest<Guid>;
 
-public record SubmitPOCommand(Guid POId) : IRequest<bool>;
-public record ApprovePOCommand(Guid POId, string ApprovedBy, string Comment) : IRequest<bool>;
-public record SendPOCommand(Guid POId, string SentBy, string Method) : IRequest<bool>;
-public record RecordReceiptCommand(Guid POId, DateTime ReceiptDate, string ReceivedBy, List<ReceiptLine> Lines) : IRequest<Guid>;
-public record ClosePOCommand(Guid POId, string Reason) : IRequest<bool>;
-public record CancelPOCommand(Guid POId, string Reason) : IRequest<bool>;
+public record SubmitPoCommand(Guid PoId) : IRequest<bool>;
 
-public class POCommandHandler : 
-    IRequestHandler<CreatePOCommand, Guid>,
-    IRequestHandler<SubmitPOCommand, bool>,
-    IRequestHandler<ApprovePOCommand, bool>,
-    IRequestHandler<SendPOCommand, bool>,
+public record ApprovePoCommand(Guid PoId, string ApprovedBy, string Comment) : IRequest<bool>;
+
+public record SendPoCommand(Guid PoId, string SentBy, string Method) : IRequest<bool>;
+
+public record RecordReceiptCommand(Guid PoId, DateTime ReceiptDate, string ReceivedBy, List<ReceiptLine> Lines) : IRequest<Guid>;
+
+public record ClosePoCommand(Guid PoId, string Reason) : IRequest<bool>;
+
+public record CancelPoCommand(Guid PoId, string Reason) : IRequest<bool>;
+
+public class PoCommandHandler(EventStoreRepository<PurchaseOrder> repo, IEventBus eventBus) :
+    IRequestHandler<CreatePoCommand, Guid>,
+    IRequestHandler<SubmitPoCommand, bool>,
+    IRequestHandler<ApprovePoCommand, bool>,
+    IRequestHandler<SendPoCommand, bool>,
     IRequestHandler<RecordReceiptCommand, Guid>,
-    IRequestHandler<ClosePOCommand, bool>,
-    IRequestHandler<CancelPOCommand, bool>
+    IRequestHandler<ClosePoCommand, bool>,
+    IRequestHandler<CancelPoCommand, bool>
 {
-    private readonly EventStoreRepository<PurchaseOrder> _repo;
-    private readonly IEventBus _eventBus;
-
-    public POCommandHandler(EventStoreRepository<PurchaseOrder> repo, IEventBus eventBus)
+    public async Task<Guid> Handle(CreatePoCommand request, CancellationToken ct)
     {
-        _repo = repo;
-        _eventBus = eventBus;
-    }
-
-    public async Task<Guid> Handle(CreatePOCommand request, CancellationToken ct)
-    {
-        var id = Guid.NewGuid();
-        var poNumber = $"PO-{DateTime.UtcNow:yyyyMMdd}-{id.ToString()[..4]}";
-        var po = PurchaseOrder.Create(id, poNumber, request.SupplierId, request.SupplierName, request.OrderDate, request.Currency, request.Lines);
-        await _repo.SaveAsync(po);
+        Guid id = Guid.NewGuid();
+        string poNumber = $"PO-{DateTime.UtcNow:yyyyMMdd}-{id.ToString()[..4]}";
+        PurchaseOrder po = PurchaseOrder.Create(id, poNumber, request.SupplierId, request.SupplierName, request.OrderDate, request.Currency, request.Lines);
+        await repo.SaveAsync(po);
         return id;
     }
 
-    public async Task<bool> Handle(SubmitPOCommand request, CancellationToken ct)
+    public async Task<bool> Handle(SubmitPoCommand request, CancellationToken ct)
     {
-        var po = await _repo.LoadAsync(request.POId);
+        PurchaseOrder? po = await repo.LoadAsync(request.PoId);
         if (po == null) throw new KeyNotFoundException("PO not found");
         po.Submit();
-        await _repo.SaveAsync(po);
+        await repo.SaveAsync(po);
         return true;
     }
 
-    public async Task<bool> Handle(ApprovePOCommand request, CancellationToken ct)
+    public async Task<bool> Handle(ApprovePoCommand request, CancellationToken ct)
     {
-        var po = await _repo.LoadAsync(request.POId);
+        PurchaseOrder? po = await repo.LoadAsync(request.PoId);
         if (po == null) throw new KeyNotFoundException("PO not found");
         po.Approve(request.ApprovedBy, request.Comment);
-        await _repo.SaveAsync(po);
+        await repo.SaveAsync(po);
         return true;
     }
 
-    public async Task<bool> Handle(SendPOCommand request, CancellationToken ct)
+    public async Task<bool> Handle(SendPoCommand request, CancellationToken ct)
     {
-        var po = await _repo.LoadAsync(request.POId);
+        PurchaseOrder? po = await repo.LoadAsync(request.PoId);
         if (po == null) throw new KeyNotFoundException("PO not found");
         po.Send(request.SentBy, request.Method);
-        await _repo.SaveAsync(po);
+        await repo.SaveAsync(po);
         return true;
     }
 
     public async Task<Guid> Handle(RecordReceiptCommand request, CancellationToken ct)
     {
-        var po = await _repo.LoadAsync(request.POId);
+        PurchaseOrder? po = await repo.LoadAsync(request.PoId);
         if (po == null) throw new KeyNotFoundException("PO not found");
         
-        var receiptId = Guid.NewGuid();
+        Guid receiptId = Guid.NewGuid();
         po.RecordReceipt(receiptId, request.ReceiptDate, request.ReceivedBy, request.Lines);
-        await _repo.SaveAsync(po);
+        await repo.SaveAsync(po);
 
         // Publish Integration Event for Inventory
-        var integrationEvent = new ProcurementIntegrationEvents.GoodsReceivedIntegrationEvent(
+        ProcurementIntegrationEvents.GoodsReceivedIntegrationEvent integrationEvent = new ProcurementIntegrationEvents.GoodsReceivedIntegrationEvent(
             po.Id, 
             po.SupplierId, 
             request.ReceiptDate,
@@ -97,26 +91,26 @@ public class POCommandHandler :
             )).ToList()
         );
         
-        await _eventBus.PublishAsync(integrationEvent);
+        await eventBus.PublishAsync(integrationEvent, ct);
 
         return receiptId;
     }
 
-    public async Task<bool> Handle(ClosePOCommand request, CancellationToken ct)
+    public async Task<bool> Handle(ClosePoCommand request, CancellationToken ct)
     {
-        var po = await _repo.LoadAsync(request.POId);
+        PurchaseOrder? po = await repo.LoadAsync(request.PoId);
         if (po == null) throw new KeyNotFoundException("PO not found");
         po.Close(request.Reason);
-        await _repo.SaveAsync(po);
+        await repo.SaveAsync(po);
         return true;
     }
 
-    public async Task<bool> Handle(CancelPOCommand request, CancellationToken ct)
+    public async Task<bool> Handle(CancelPoCommand request, CancellationToken ct)
     {
-        var po = await _repo.LoadAsync(request.POId);
+        PurchaseOrder? po = await repo.LoadAsync(request.PoId);
         if (po == null) throw new KeyNotFoundException("PO not found");
         po.Cancel(request.Reason);
-        await _repo.SaveAsync(po);
+        await repo.SaveAsync(po);
         return true;
     }
 }

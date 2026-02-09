@@ -45,27 +45,27 @@ public class Role : AggregateRoot<Guid>
     public string RoleCode { get; private set; } = string.Empty;
     public bool IsSystemRole { get; private set; }
     
-    public List<string> Permissions { get; private set; } = new();
-    public List<RoleDataPermission> DataPermissions { get; private set; } = new();
+    public List<string> Permissions { get; private set; } = [];
+    public List<RoleDataPermission> DataPermissions { get; private set; } = [];
 
     public static Role Create(Guid id, string roleName, string roleCode, bool isSystemRole)
     {
-        var role = new Role();
+        Role role = new Role();
         role.ApplyChange(new RoleCreatedEvent(id, roleName, roleCode, isSystemRole));
         return role;
     }
 
     public void AssignPermission(string permissionCode)
     {
-        if (!Permissions.Contains(permissionCode))
+        if (!this.Permissions.Contains(permissionCode))
         {
-            ApplyChange(new RolePermissionAssignedEvent(Id, permissionCode));
+            this.ApplyChange(new RolePermissionAssignedEvent(this.Id, permissionCode));
         }
     }
 
     public void ConfigureDataPermission(string dataDomain, ScopeType scopeType, List<string> allowedIds)
     {
-        ApplyChange(new RoleDataPermissionConfiguredEvent(Id, dataDomain, scopeType, allowedIds));
+        this.ApplyChange(new RoleDataPermissionConfiguredEvent(this.Id, dataDomain, scopeType, allowedIds));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -73,21 +73,20 @@ public class Role : AggregateRoot<Guid>
         switch (@event)
         {
             case RoleCreatedEvent e:
-                Id = e.RoleId;
-                RoleName = e.RoleName;
-                RoleCode = e.RoleCode;
-                IsSystemRole = e.IsSystemRole;
+                this.Id = e.RoleId;
+                this.RoleName = e.RoleName;
+                this.RoleCode = e.RoleCode;
+                this.IsSystemRole = e.IsSystemRole;
                 break;
                 
             case RolePermissionAssignedEvent e:
-                if (!Permissions.Contains(e.PermissionCode))
-                    Permissions.Add(e.PermissionCode);
+                if (!this.Permissions.Contains(e.PermissionCode)) this.Permissions.Add(e.PermissionCode);
                 break;
 
             case RoleDataPermissionConfiguredEvent e:
-                var existing = DataPermissions.FirstOrDefault(x => x.DataDomain == e.DataDomain);
-                if (existing != null) DataPermissions.Remove(existing);
-                DataPermissions.Add(new RoleDataPermission(e.DataDomain, e.ScopeType, e.AllowedIds));
+                RoleDataPermission? existing = this.DataPermissions.FirstOrDefault(x => x.DataDomain == e.DataDomain);
+                if (existing != null) this.DataPermissions.Remove(existing);
+                this.DataPermissions.Add(new RoleDataPermission(e.DataDomain, e.ScopeType, e.AllowedIds));
                 break;
         }
     }

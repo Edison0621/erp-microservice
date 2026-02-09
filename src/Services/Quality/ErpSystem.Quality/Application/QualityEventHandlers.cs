@@ -7,38 +7,27 @@ namespace ErpSystem.Quality.Application;
 /// Integration Event Handlers for Quality Control
 /// Triggers quality checks based on system events (e.g., procurement receipt, production order)
 /// </summary>
-public class QualityIntegrationEventHandlers
+public class QualityIntegrationEventHandlers(
+    IEventStore eventStore,
+    IQualityPointRepository qualityPointRepository,
+    ILogger<QualityIntegrationEventHandlers> logger)
 {
-    private readonly IEventStore _eventStore;
-    private readonly IQualityPointRepository _qualityPointRepository;
-    private readonly ILogger<QualityIntegrationEventHandlers> _logger;
-
-    public QualityIntegrationEventHandlers(
-        IEventStore eventStore,
-        IQualityPointRepository qualityPointRepository,
-        ILogger<QualityIntegrationEventHandlers> logger)
-    {
-        _eventStore = eventStore;
-        _qualityPointRepository = qualityPointRepository;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Handle inventory receipt - creates mandatory IQC (Incoming Quality Control)
     /// </summary>
     public async Task HandleInventoryReceipt(InventoryReceiptIntegrationEvent @event)
     {
-        _logger.LogInformation("Processing inventory receipt for quality check: {ReceiptId}", @event.ReceiptId);
+        logger.LogInformation("Processing inventory receipt for quality check: {ReceiptId}", @event.ReceiptId);
 
-        foreach (var item in @event.Items)
+        foreach (ReceiptItem item in @event.Items)
         {
             // Find mandatory quality points for this material and operation
-            var qualityPoints = await _qualityPointRepository.GetPointsForMaterial(item.MaterialId, "RECEIPT");
+            List<QualityPoint> qualityPoints = await qualityPointRepository.GetPointsForMaterial(item.MaterialId, "RECEIPT");
 
-            foreach (var point in qualityPoints)
+            foreach (QualityPoint point in qualityPoints)
             {
-                var checkId = Guid.NewGuid();
-                var check = QualityCheck.Create(
+                Guid checkId = Guid.NewGuid();
+                QualityCheck check = QualityCheck.Create(
                     checkId,
                     @event.TenantId,
                     point.Id,
@@ -46,9 +35,9 @@ public class QualityIntegrationEventHandlers
                     "INVENTORY_RECEIPT",
                     item.MaterialId);
 
-                await _eventStore.SaveAggregateAsync(check);
+                await eventStore.SaveAggregateAsync(check);
 
-                _logger.LogInformation(
+                logger.LogInformation(
                     "Created IQC {CheckId} for Material {MaterialId} from Receipt {ReceiptId}",
                     checkId, item.MaterialId, @event.ReceiptId);
             }
@@ -60,14 +49,14 @@ public class QualityIntegrationEventHandlers
     /// </summary>
     public async Task HandleProductionOrderStarted(ProductionOrderStartedIntegrationEvent @event)
     {
-        _logger.LogInformation("Processing production order for quality check: {OrderId}", @event.OrderId);
+        logger.LogInformation("Processing production order for quality check: {OrderId}", @event.OrderId);
 
-        var qualityPoints = await _qualityPointRepository.GetPointsForMaterial(@event.MaterialId, "PRODUCTION_START");
+        List<QualityPoint> qualityPoints = await qualityPointRepository.GetPointsForMaterial(@event.MaterialId, "PRODUCTION_START");
 
-        foreach (var point in qualityPoints)
+        foreach (QualityPoint point in qualityPoints)
         {
-            var checkId = Guid.NewGuid();
-            var check = QualityCheck.Create(
+            Guid checkId = Guid.NewGuid();
+            QualityCheck check = QualityCheck.Create(
                 checkId,
                 @event.TenantId,
                 point.Id,
@@ -75,9 +64,9 @@ public class QualityIntegrationEventHandlers
                 "PRODUCTION_ORDER",
                 @event.MaterialId);
 
-            await _eventStore.SaveAggregateAsync(check);
+            await eventStore.SaveAggregateAsync(check);
 
-            _logger.LogInformation(
+            logger.LogInformation(
                 "Created PQC {CheckId} for Production Order {OrderId}",
                 checkId, @event.OrderId);
         }

@@ -6,18 +6,14 @@ namespace ErpSystem.Payroll.Infrastructure;
 
 #region Salary Structure Projections
 
-public class SalaryStructureProjectionHandler :
+public class SalaryStructureProjectionHandler(PayrollReadDbContext db) :
     INotificationHandler<SalaryStructureCreatedEvent>,
     INotificationHandler<SalaryComponentAddedEvent>,
     INotificationHandler<DeductionAddedEvent>
 {
-    private readonly PayrollReadDbContext _db;
-
-    public SalaryStructureProjectionHandler(PayrollReadDbContext db) => _db = db;
-
     public async Task Handle(SalaryStructureCreatedEvent e, CancellationToken ct)
     {
-        var structure = new SalaryStructureReadModel
+        SalaryStructureReadModel structure = new SalaryStructureReadModel
         {
             Id = e.StructureId,
             Name = e.Name,
@@ -30,38 +26,38 @@ public class SalaryStructureProjectionHandler :
             Deductions = "[]",
             CreatedAt = e.OccurredOn
         };
-        _db.SalaryStructures.Add(structure);
-        await _db.SaveChangesAsync(ct);
+        db.SalaryStructures.Add(structure);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task Handle(SalaryComponentAddedEvent e, CancellationToken ct)
     {
-        var structure = await _db.SalaryStructures.FindAsync([e.StructureId], ct);
+        SalaryStructureReadModel? structure = await db.SalaryStructures.FindAsync([e.StructureId], ct);
         if (structure != null)
         {
-            var components = JsonSerializer.Deserialize<List<object>>(structure.Components) ?? new();
+            List<object> components = JsonSerializer.Deserialize<List<object>>(structure.Components) ?? [];
             components.Add(new { e.ComponentId, e.Name, Type = e.Type.ToString(), e.Amount, e.IsPercentage, e.IsTaxable });
             structure.Components = JsonSerializer.Serialize(components);
             structure.ComponentCount++;
             
             // Recalculate total earnings
-            var additionalAmount = e.IsPercentage ? structure.BaseSalary * e.Amount / 100 : e.Amount;
+            decimal additionalAmount = e.IsPercentage ? structure.BaseSalary * e.Amount / 100 : e.Amount;
             structure.TotalEarnings += additionalAmount;
             
-            await _db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(DeductionAddedEvent e, CancellationToken ct)
     {
-        var structure = await _db.SalaryStructures.FindAsync([e.StructureId], ct);
+        SalaryStructureReadModel? structure = await db.SalaryStructures.FindAsync([e.StructureId], ct);
         if (structure != null)
         {
-            var deductions = JsonSerializer.Deserialize<List<object>>(structure.Deductions) ?? new();
+            List<object> deductions = JsonSerializer.Deserialize<List<object>>(structure.Deductions) ?? [];
             deductions.Add(new { e.DeductionId, e.Name, Type = e.Type.ToString(), e.Amount, e.IsPercentage });
             structure.Deductions = JsonSerializer.Serialize(deductions);
             structure.DeductionCount++;
-            await _db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
         }
     }
 }
@@ -70,20 +66,16 @@ public class SalaryStructureProjectionHandler :
 
 #region Payroll Run Projections
 
-public class PayrollRunProjectionHandler :
+public class PayrollRunProjectionHandler(PayrollReadDbContext db) :
     INotificationHandler<PayrollRunCreatedEvent>,
     INotificationHandler<PayrollRunStatusChangedEvent>,
     INotificationHandler<PayslipGeneratedEvent>,
     INotificationHandler<PayrollApprovedEvent>,
     INotificationHandler<PayslipPaidEvent>
 {
-    private readonly PayrollReadDbContext _db;
-
-    public PayrollRunProjectionHandler(PayrollReadDbContext db) => _db = db;
-
     public async Task Handle(PayrollRunCreatedEvent e, CancellationToken ct)
     {
-        var run = new PayrollRunReadModel
+        PayrollRunReadModel run = new PayrollRunReadModel
         {
             Id = e.PayrollRunId,
             RunNumber = e.RunNumber,
@@ -91,28 +83,28 @@ public class PayrollRunProjectionHandler :
             Month = e.Month,
             PaymentDate = e.PaymentDate,
             Description = e.Description,
-            Status = PayrollRunStatus.Draft.ToString(),
+            Status = nameof(PayrollRunStatus.Draft),
             CreatedAt = e.OccurredOn
         };
-        _db.PayrollRuns.Add(run);
-        await _db.SaveChangesAsync(ct);
+        db.PayrollRuns.Add(run);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task Handle(PayrollRunStatusChangedEvent e, CancellationToken ct)
     {
-        var run = await _db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
+        PayrollRunReadModel? run = await db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
         if (run != null)
         {
             run.Status = e.NewStatus.ToString();
-            await _db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(PayslipGeneratedEvent e, CancellationToken ct)
     {
-        var run = await _db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
+        PayrollRunReadModel? run = await db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
         
-        var payslip = new PayslipReadModel
+        PayslipReadModel payslip = new PayslipReadModel
         {
             Id = e.PayslipId,
             PayrollRunId = e.PayrollRunId,
@@ -124,10 +116,10 @@ public class PayrollRunProjectionHandler :
             GrossAmount = e.GrossAmount,
             TotalDeductions = e.TotalDeductions,
             NetAmount = e.NetAmount,
-            Status = PayslipStatus.Draft.ToString(),
+            Status = nameof(PayslipStatus.Draft),
             Lines = "[]"
         };
-        _db.Payslips.Add(payslip);
+        db.Payslips.Add(payslip);
 
         if (run != null)
         {
@@ -137,41 +129,41 @@ public class PayrollRunProjectionHandler :
             run.TotalNetAmount += e.NetAmount;
         }
 
-        await _db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task Handle(PayrollApprovedEvent e, CancellationToken ct)
     {
-        var run = await _db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
+        PayrollRunReadModel? run = await db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
         if (run != null)
         {
-            run.Status = PayrollRunStatus.Approved.ToString();
+            run.Status = nameof(PayrollRunStatus.Approved);
             run.ApprovedAt = e.ApprovedAt;
             run.ApprovedByUserId = e.ApprovedByUserId;
-            await _db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(PayslipPaidEvent e, CancellationToken ct)
     {
-        var payslip = await _db.Payslips.FindAsync([e.PayslipId], ct);
+        PayslipReadModel? payslip = await db.Payslips.FindAsync([e.PayslipId], ct);
         if (payslip != null)
         {
-            payslip.Status = PayslipStatus.Paid.ToString();
+            payslip.Status = nameof(PayslipStatus.Paid);
             payslip.PaidAt = e.PaidAt;
             payslip.PaymentMethod = e.PaymentMethod;
             payslip.TransactionRef = e.TransactionRef;
         }
 
-        var run = await _db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
+        PayrollRunReadModel? run = await db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
         if (run != null)
         {
             run.PaidCount++;
             if (run.PaidCount >= run.EmployeeCount)
-                run.Status = PayrollRunStatus.Paid.ToString();
+                run.Status = nameof(PayrollRunStatus.Paid);
         }
 
-        await _db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
     }
 }
 

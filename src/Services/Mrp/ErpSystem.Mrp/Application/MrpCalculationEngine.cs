@@ -1,5 +1,4 @@
 using ErpSystem.BuildingBlocks.Domain;
-using Microsoft.Extensions.Logging;
 using ErpSystem.Mrp.Domain;
 
 namespace ErpSystem.Mrp.Application;
@@ -7,50 +6,35 @@ namespace ErpSystem.Mrp.Application;
 /// <summary>
 /// MRP Calculation Engine - Analyzes inventory and generates procurement suggestions
 /// </summary>
-public class MrpCalculationEngine
+public class MrpCalculationEngine(
+    IEventStore eventStore,
+    IInventoryQueryService inventoryQuery,
+    IProcurementQueryService procurementQuery,
+    IProductionQueryService productionQuery,
+    ILogger<MrpCalculationEngine> logger)
 {
-    private readonly IEventStore _eventStore;
-    private readonly IInventoryQueryService _inventoryQuery;
-    private readonly IProcurementQueryService _procurementQuery;
-    private readonly IProductionQueryService _productionQuery;
-    private readonly ILogger<MrpCalculationEngine> _logger;
-
-    public MrpCalculationEngine(
-        IEventStore eventStore,
-        IInventoryQueryService inventoryQuery,
-        IProcurementQueryService procurementQuery,
-        IProductionQueryService productionQuery,
-        ILogger<MrpCalculationEngine> logger)
-    {
-        _eventStore = eventStore;
-        _inventoryQuery = inventoryQuery;
-        _procurementQuery = procurementQuery;
-        _productionQuery = productionQuery;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Run MRP calculation for a specific reordering rule
     /// </summary>
     public async Task<ProcurementSuggestion?> CalculateForRule(ReorderingRule rule)
     {
-        _logger.LogInformation(
+        logger.LogInformation(
             "Running MRP calculation for Material {MaterialId} in Warehouse {WarehouseId}",
             rule.MaterialId, rule.WarehouseId);
 
         // Step 1: Get current inventory status
-        var inventory = await _inventoryQuery.GetInventoryStatus(rule.WarehouseId, rule.MaterialId);
+        InventoryStatus inventory = await inventoryQuery.GetInventoryStatus(rule.WarehouseId, rule.MaterialId);
         
         // Step 2: Get incoming procurement
-        var incomingProcurement = await _procurementQuery.GetIncomingQuantity(rule.MaterialId, rule.WarehouseId);
+        decimal incomingProcurement = await procurementQuery.GetIncomingQuantity(rule.MaterialId, rule.WarehouseId);
         
         // Step 3: Get incoming production
-        var incomingProduction = await _productionQuery.GetPlannedOutputQuantity(rule.MaterialId, rule.WarehouseId);
+        decimal incomingProduction = await productionQuery.GetPlannedOutputQuantity(rule.MaterialId, rule.WarehouseId);
         
         // Step 4: Calculate forecasted available
-        var forecastedAvailable = inventory.Available + incomingProcurement + incomingProduction;
-        
-        _logger.LogDebug(
+        decimal forecastedAvailable = inventory.Available + incomingProcurement + incomingProduction;
+
+        logger.LogDebug(
             "MRP Calculation - OnHand: {OnHand}, Reserved: {Reserved}, Available: {Available}, " +
             "Incoming PO: {IncomingPO}, Incoming Prod: {IncomingProd}, Forecasted: {Forecasted}",
             inventory.OnHand, inventory.Reserved, inventory.Available,
@@ -59,14 +43,14 @@ public class MrpCalculationEngine
         // Step 5: Check if reordering is needed
         if (forecastedAvailable >= rule.MinQuantity)
         {
-            _logger.LogInformation(
+            logger.LogInformation(
                 "No reordering needed. Forecasted available ({Forecasted}) >= Min ({Min})",
                 forecastedAvailable, rule.MinQuantity);
             return null;
         }
 
         // Step 6: Calculate suggested quantity
-        var suggestedQuantity = rule.MaxQuantity - forecastedAvailable;
+        decimal suggestedQuantity = rule.MaxQuantity - forecastedAvailable;
         
         // Use reorder quantity if specified
         if (rule.ReorderQuantity > 0)
@@ -75,10 +59,10 @@ public class MrpCalculationEngine
         }
 
         // Step 7: Calculate suggested date (current date + lead time)
-        var suggestedDate = DateTime.UtcNow.AddDays(rule.LeadTimeDays);
+        DateTime suggestedDate = DateTime.UtcNow.AddDays(rule.LeadTimeDays);
 
         // Step 8: Create calculation record
-        var calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new ProcurementCalculation(
             CurrentOnHand: inventory.OnHand,
             Reserved: inventory.Reserved,
             Available: inventory.Available,
@@ -90,8 +74,8 @@ public class MrpCalculationEngine
             Reason: $"Forecasted available ({forecastedAvailable}) below minimum ({rule.MinQuantity})");
 
         // Step 9: Create procurement suggestion
-        var suggestionId = Guid.NewGuid();
-        var suggestion = ProcurementSuggestion.Create(
+        Guid suggestionId = Guid.NewGuid();
+        ProcurementSuggestion suggestion = ProcurementSuggestion.Create(
             suggestionId,
             rule.TenantId,
             rule.MaterialId,
@@ -101,9 +85,9 @@ public class MrpCalculationEngine
             rule.Id.ToString(),
             calculation);
 
-        await _eventStore.SaveAggregateAsync(suggestion);
+        await eventStore.SaveAggregateAsync(suggestion);
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "Created procurement suggestion {SuggestionId} for {Quantity} units of {MaterialId}",
             suggestionId, suggestedQuantity, rule.MaterialId);
 
@@ -115,19 +99,19 @@ public class MrpCalculationEngine
     /// </summary>
     public async Task<List<ProcurementSuggestion>> RunMrpForAllRules(string tenantId)
     {
-        _logger.LogInformation("Running MRP calculation for all active rules in tenant {TenantId}", tenantId);
+        logger.LogInformation("Running MRP calculation for all active rules in tenant {TenantId}", tenantId);
 
-        var suggestions = new List<ProcurementSuggestion>();
+        List<ProcurementSuggestion> suggestions = [];
         
         // This would typically load from a read model
         // For now, this is a placeholder
-        var activeRules = await GetActiveReorderingRules(tenantId);
+        List<ReorderingRule> activeRules = await this.GetActiveReorderingRules(tenantId);
 
-        foreach (var rule in activeRules)
+        foreach (ReorderingRule rule in activeRules)
         {
             try
             {
-                var suggestion = await CalculateForRule(rule);
+                ProcurementSuggestion? suggestion = await this.CalculateForRule(rule);
                 if (suggestion != null)
                 {
                     suggestions.Add(suggestion);
@@ -135,13 +119,13 @@ public class MrpCalculationEngine
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, 
+                logger.LogError(ex, 
                     "Failed to calculate MRP for rule {RuleId}, Material {MaterialId}",
                     rule.Id, rule.MaterialId);
             }
         }
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "MRP calculation completed. Generated {Count} procurement suggestions",
             suggestions.Count);
 
@@ -152,7 +136,7 @@ public class MrpCalculationEngine
     {
         // TODO: Implement read model query
         // This is a placeholder
-        return new List<ReorderingRule>();
+        return [];
     }
 }
 

@@ -5,27 +5,20 @@ namespace ErpSystem.Reporting.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ReportsController : ControllerBase
+public class ReportsController(IReportService reportService) : ControllerBase
 {
-    private readonly IReportService _reportService;
-
-    public ReportsController(IReportService reportService)
-    {
-        _reportService = reportService;
-    }
-
     /// <summary>
-    /// Get financial summary report (P&L style)
+    /// Get financial summary report
     /// </summary>
     [HttpGet("financial-summary")]
     public async Task<ActionResult<FinancialSummaryReport>> GetFinancialSummary(
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate)
     {
-        var report = await _reportService.GetFinancialSummaryAsync(
+        FinancialSummaryReport report = await reportService.GetFinancialSummaryAsync(
             startDate ?? DateTime.UtcNow.AddMonths(-1),
             endDate ?? DateTime.UtcNow);
-        return Ok(report);
+        return this.Ok(report);
     }
 
     /// <summary>
@@ -34,8 +27,8 @@ public class ReportsController : ControllerBase
     [HttpGet("inventory-valuation")]
     public async Task<ActionResult<InventoryValuationReport>> GetInventoryValuation()
     {
-        var report = await _reportService.GetInventoryValuationAsync();
-        return Ok(report);
+        InventoryValuationReport report = await reportService.GetInventoryValuationAsync();
+        return this.Ok(report);
     }
 
     /// <summary>
@@ -46,10 +39,10 @@ public class ReportsController : ControllerBase
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate)
     {
-        var report = await _reportService.GetSalesByCustomerAsync(
+        SalesByCustomerReport report = await reportService.GetSalesByCustomerAsync(
             startDate ?? DateTime.UtcNow.AddMonths(-1),
             endDate ?? DateTime.UtcNow);
-        return Ok(report);
+        return this.Ok(report);
     }
 
     /// <summary>
@@ -58,8 +51,8 @@ public class ReportsController : ControllerBase
     [HttpGet("purchase-orders")]
     public async Task<ActionResult<PurchaseOrderReport>> GetPurchaseOrderReport()
     {
-        var report = await _reportService.GetPurchaseOrderReportAsync();
-        return Ok(report);
+        PurchaseOrderReport report = await reportService.GetPurchaseOrderReportAsync();
+        return this.Ok(report);
     }
 
     /// <summary>
@@ -70,10 +63,10 @@ public class ReportsController : ControllerBase
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate)
     {
-        var report = await _reportService.GetProductionEfficiencyAsync(
+        ProductionEfficiencyReport report = await reportService.GetProductionEfficiencyAsync(
             startDate ?? DateTime.UtcNow.AddMonths(-1),
             endDate ?? DateTime.UtcNow);
-        return Ok(report);
+        return this.Ok(report);
     }
 }
 

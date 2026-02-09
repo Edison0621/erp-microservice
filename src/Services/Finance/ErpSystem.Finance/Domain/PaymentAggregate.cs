@@ -3,6 +3,7 @@ using ErpSystem.BuildingBlocks.Domain;
 namespace ErpSystem.Finance.Domain;
 
 public enum PaymentDirection { Incoming = 1, Outgoing = 2 } // Incoming = AR, Outgoing = AP
+
 public enum PaymentStatus { Draft, Completed, Failed, Voided }
 
 public record PaymentCreatedEvent(
@@ -49,7 +50,7 @@ public class Payment : AggregateRoot<Guid>
     public PaymentStatus Status { get; private set; }
 
     private readonly Dictionary<Guid, decimal> _allocations = new();
-    public IReadOnlyDictionary<Guid, decimal> Allocations => _allocations;
+    public IReadOnlyDictionary<Guid, decimal> Allocations => this._allocations;
 
     public static Payment Create(
         Guid id, 
@@ -63,26 +64,26 @@ public class Payment : AggregateRoot<Guid>
         PaymentMethod method, 
         string? reference)
     {
-        var p = new Payment();
+        Payment p = new Payment();
         p.ApplyChange(new PaymentCreatedEvent(id, number, direction, partyId, partyName, amount, currency, date, method, reference));
         return p;
     }
 
     public void AllocateToInvoice(Guid invoiceId, decimal amount)
     {
-        if (Status != PaymentStatus.Draft && Status != PaymentStatus.Completed)
+        if (this.Status != PaymentStatus.Draft && this.Status != PaymentStatus.Completed)
             throw new InvalidOperationException("Cannot allocate voided or failed payments.");
         
-        if (amount > UnallocatedAmount)
+        if (amount > this.UnallocatedAmount)
             throw new InvalidOperationException("Allocation amount exceeds unallocated balance.");
 
-        ApplyChange(new PaymentAllocatedEvent(Id, invoiceId, amount));
+        this.ApplyChange(new PaymentAllocatedEvent(this.Id, invoiceId, amount));
     }
 
     public void Complete()
     {
-        if (Status == PaymentStatus.Completed) return;
-        ApplyChange(new PaymentCompletedEvent(Id));
+        if (this.Status == PaymentStatus.Completed) return;
+        this.ApplyChange(new PaymentCompletedEvent(this.Id));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -90,30 +91,30 @@ public class Payment : AggregateRoot<Guid>
         switch (@event)
         {
             case PaymentCreatedEvent e:
-                Id = e.PaymentId;
-                PaymentNumber = e.PaymentNumber;
-                Direction = e.Direction;
-                PartyId = e.PartyId;
-                PartyName = e.PartyName;
-                Amount = e.Amount;
-                UnallocatedAmount = e.Amount;
-                Currency = e.Currency;
-                PaymentDate = e.PaymentDate;
-                Method = e.Method;
-                ReferenceNo = e.ReferenceNo;
-                Status = PaymentStatus.Draft;
+                this.Id = e.PaymentId;
+                this.PaymentNumber = e.PaymentNumber;
+                this.Direction = e.Direction;
+                this.PartyId = e.PartyId;
+                this.PartyName = e.PartyName;
+                this.Amount = e.Amount;
+                this.UnallocatedAmount = e.Amount;
+                this.Currency = e.Currency;
+                this.PaymentDate = e.PaymentDate;
+                this.Method = e.Method;
+                this.ReferenceNo = e.ReferenceNo;
+                this.Status = PaymentStatus.Draft;
                 break;
             case PaymentAllocatedEvent e:
-                UnallocatedAmount -= e.AllocationAmount;
-                if (_allocations.ContainsKey(e.InvoiceId))
-                    _allocations[e.InvoiceId] += e.AllocationAmount;
+                this.UnallocatedAmount -= e.AllocationAmount;
+                if (this._allocations.ContainsKey(e.InvoiceId))
+                    this._allocations[e.InvoiceId] += e.AllocationAmount;
                 else
-                    _allocations[e.InvoiceId] = e.AllocationAmount;
+                    this._allocations[e.InvoiceId] = e.AllocationAmount;
                 
                 // Auto-complete if fully allocated? Maybe not, keep explicit.
                 break;
             case PaymentCompletedEvent:
-                Status = PaymentStatus.Completed;
+                this.Status = PaymentStatus.Completed;
                 break;
         }
     }

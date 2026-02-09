@@ -7,7 +7,7 @@ namespace ErpSystem.Payroll.Domain;
 public enum SalaryComponentType
 {
     Basic = 0,
-    HRA = 1,           // 住房补贴
+    Hra = 1,           // 住房补贴
     Transport = 2,     // 交通补贴
     Meal = 3,          // 餐补
     Performance = 4,   // 绩效奖金
@@ -189,15 +189,16 @@ public class SalaryStructure : AggregateRoot<Guid>
     public decimal BaseSalary { get; private set; }
     public string Currency { get; private set; } = "CNY";
     public bool IsActive { get; private set; } = true;
-    public List<SalaryComponent> Components { get; private set; } = new();
-    public List<Deduction> Deductions { get; private set; } = new();
+    public List<SalaryComponent> Components { get; private set; } = [];
+    public List<Deduction> Deductions { get; private set; } = [];
     public DateTime CreatedAt { get; private set; }
 
-    public decimal TotalEarnings => BaseSalary + Components
+    public decimal TotalEarnings =>
+        this.BaseSalary + this.Components
         .Where(c => !c.IsPercentage)
-        .Sum(c => c.Amount) + Components
+        .Sum(c => c.Amount) + this.Components
         .Where(c => c.IsPercentage)
-        .Sum(c => BaseSalary * c.Amount / 100);
+        .Sum(c => this.BaseSalary * c.Amount / 100);
 
     public static SalaryStructure Create(
         Guid id,
@@ -206,21 +207,21 @@ public class SalaryStructure : AggregateRoot<Guid>
         string currency,
         string? description = null)
     {
-        var structure = new SalaryStructure();
+        SalaryStructure structure = new SalaryStructure();
         structure.ApplyChange(new SalaryStructureCreatedEvent(id, name, description ?? "", baseSalary, currency));
         return structure;
     }
 
     public void AddComponent(string name, SalaryComponentType type, decimal amount, bool isPercentage, bool isTaxable)
     {
-        var componentId = Guid.NewGuid();
-        ApplyChange(new SalaryComponentAddedEvent(Id, componentId, name, type, amount, isPercentage, isTaxable));
+        Guid componentId = Guid.NewGuid();
+        this.ApplyChange(new SalaryComponentAddedEvent(this.Id, componentId, name, type, amount, isPercentage, isTaxable));
     }
 
     public void AddDeduction(string name, DeductionType type, decimal amount, bool isPercentage)
     {
-        var deductionId = Guid.NewGuid();
-        ApplyChange(new DeductionAddedEvent(Id, deductionId, name, type, amount, isPercentage));
+        Guid deductionId = Guid.NewGuid();
+        this.ApplyChange(new DeductionAddedEvent(this.Id, deductionId, name, type, amount, isPercentage));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -228,20 +229,20 @@ public class SalaryStructure : AggregateRoot<Guid>
         switch (@event)
         {
             case SalaryStructureCreatedEvent e:
-                Id = e.StructureId;
-                Name = e.Name;
-                Description = e.Description;
-                BaseSalary = e.BaseSalary;
-                Currency = e.Currency;
-                CreatedAt = e.OccurredOn;
+                this.Id = e.StructureId;
+                this.Name = e.Name;
+                this.Description = e.Description;
+                this.BaseSalary = e.BaseSalary;
+                this.Currency = e.Currency;
+                this.CreatedAt = e.OccurredOn;
                 break;
 
             case SalaryComponentAddedEvent e:
-                Components.Add(new SalaryComponent(e.ComponentId, e.Name, e.Type, e.Amount, e.IsPercentage, e.IsTaxable));
+                this.Components.Add(new SalaryComponent(e.ComponentId, e.Name, e.Type, e.Amount, e.IsPercentage, e.IsTaxable));
                 break;
 
             case DeductionAddedEvent e:
-                Deductions.Add(new Deduction(e.DeductionId, e.Name, e.Type, e.Amount, e.IsPercentage));
+                this.Deductions.Add(new Deduction(e.DeductionId, e.Name, e.Type, e.Amount, e.IsPercentage));
                 break;
         }
     }
@@ -259,16 +260,16 @@ public class PayrollRun : AggregateRoot<Guid>
     public DateTime PaymentDate { get; private set; }
     public string? Description { get; private set; }
     public PayrollRunStatus Status { get; private set; }
-    public List<Payslip> Payslips { get; private set; } = new();
+    public List<Payslip> Payslips { get; private set; } = [];
     public DateTime CreatedAt { get; private set; }
     public DateTime? ApprovedAt { get; private set; }
     public string? ApprovedByUserId { get; private set; }
 
-    public decimal TotalGrossAmount => Payslips.Sum(p => p.GrossAmount);
-    public decimal TotalDeductions => Payslips.Sum(p => p.TotalDeductions);
-    public decimal TotalNetAmount => Payslips.Sum(p => p.NetAmount);
-    public int EmployeeCount => Payslips.Count;
-    public int PaidCount => Payslips.Count(p => p.Status == PayslipStatus.Paid);
+    public decimal TotalGrossAmount => this.Payslips.Sum(p => p.GrossAmount);
+    public decimal TotalDeductions => this.Payslips.Sum(p => p.TotalDeductions);
+    public decimal TotalNetAmount => this.Payslips.Sum(p => p.NetAmount);
+    public int EmployeeCount => this.Payslips.Count;
+    public int PaidCount => this.Payslips.Count(p => p.Status == PayslipStatus.Paid);
 
     public static PayrollRun Create(
         Guid id,
@@ -278,7 +279,7 @@ public class PayrollRun : AggregateRoot<Guid>
         DateTime paymentDate,
         string? description = null)
     {
-        var run = new PayrollRun();
+        PayrollRun run = new PayrollRun();
         run.ApplyChange(new PayrollRunCreatedEvent(id, runNumber, year, month, paymentDate, description ?? ""));
         return run;
     }
@@ -291,60 +292,60 @@ public class PayrollRun : AggregateRoot<Guid>
         decimal totalDeductions,
         List<PayslipLine> lines)
     {
-        if (Status != PayrollRunStatus.Draft && Status != PayrollRunStatus.Processing)
+        if (this.Status != PayrollRunStatus.Draft && this.Status != PayrollRunStatus.Processing)
             throw new InvalidOperationException("Cannot add payslips to non-draft payroll run");
 
-        var netAmount = grossAmount - totalDeductions;
-        var payslipId = Guid.NewGuid();
-        ApplyChange(new PayslipGeneratedEvent(Id, payslipId, payslipNumber, employeeId, employeeName, grossAmount, totalDeductions, netAmount));
+        decimal netAmount = grossAmount - totalDeductions;
+        Guid payslipId = Guid.NewGuid();
+        this.ApplyChange(new PayslipGeneratedEvent(this.Id, payslipId, payslipNumber, employeeId, employeeName, grossAmount, totalDeductions, netAmount));
         return payslipId;
     }
 
     public void StartProcessing()
     {
-        if (Status != PayrollRunStatus.Draft)
+        if (this.Status != PayrollRunStatus.Draft)
             throw new InvalidOperationException("Can only start processing from draft status");
 
-        ApplyChange(new PayrollRunStatusChangedEvent(Id, Status, PayrollRunStatus.Processing, null));
+        this.ApplyChange(new PayrollRunStatusChangedEvent(this.Id, this.Status, PayrollRunStatus.Processing, null));
     }
 
     public void SubmitForApproval()
     {
-        if (Status != PayrollRunStatus.Processing)
+        if (this.Status != PayrollRunStatus.Processing)
             throw new InvalidOperationException("Can only submit for approval from processing status");
 
-        if (Payslips.Count == 0)
+        if (this.Payslips.Count == 0)
             throw new InvalidOperationException("Cannot submit empty payroll run");
 
-        ApplyChange(new PayrollRunStatusChangedEvent(Id, Status, PayrollRunStatus.PendingApproval, null));
+        this.ApplyChange(new PayrollRunStatusChangedEvent(this.Id, this.Status, PayrollRunStatus.PendingApproval, null));
     }
 
     public void Approve(string approvedByUserId)
     {
-        if (Status != PayrollRunStatus.PendingApproval)
+        if (this.Status != PayrollRunStatus.PendingApproval)
             throw new InvalidOperationException("Can only approve from pending approval status");
 
-        ApplyChange(new PayrollApprovedEvent(Id, approvedByUserId, DateTime.UtcNow, TotalNetAmount, EmployeeCount));
+        this.ApplyChange(new PayrollApprovedEvent(this.Id, approvedByUserId, DateTime.UtcNow, this.TotalNetAmount, this.EmployeeCount));
     }
 
     public void MarkPayslipAsPaid(Guid payslipId, string paymentMethod, string? transactionRef)
     {
-        if (Status != PayrollRunStatus.Approved && Status != PayrollRunStatus.Paid)
+        if (this.Status != PayrollRunStatus.Approved && this.Status != PayrollRunStatus.Paid)
             throw new InvalidOperationException("Can only mark payslips as paid after approval");
 
-        var payslip = Payslips.FirstOrDefault(p => p.Id == payslipId);
+        Payslip? payslip = this.Payslips.FirstOrDefault(p => p.Id == payslipId);
         if (payslip == null)
             throw new InvalidOperationException($"Payslip {payslipId} not found");
 
-        ApplyChange(new PayslipPaidEvent(Id, payslipId, DateTime.UtcNow, paymentMethod, transactionRef));
+        this.ApplyChange(new PayslipPaidEvent(this.Id, payslipId, DateTime.UtcNow, paymentMethod, transactionRef));
     }
 
     public void Cancel(string reason)
     {
-        if (Status == PayrollRunStatus.Paid)
+        if (this.Status == PayrollRunStatus.Paid)
             throw new InvalidOperationException("Cannot cancel paid payroll run");
 
-        ApplyChange(new PayrollRunStatusChangedEvent(Id, Status, PayrollRunStatus.Cancelled, reason));
+        this.ApplyChange(new PayrollRunStatusChangedEvent(this.Id, this.Status, PayrollRunStatus.Cancelled, reason));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -352,22 +353,22 @@ public class PayrollRun : AggregateRoot<Guid>
         switch (@event)
         {
             case PayrollRunCreatedEvent e:
-                Id = e.PayrollRunId;
-                RunNumber = e.RunNumber;
-                Year = e.Year;
-                Month = e.Month;
-                PaymentDate = e.PaymentDate;
-                Description = e.Description;
-                Status = PayrollRunStatus.Draft;
-                CreatedAt = e.OccurredOn;
+                this.Id = e.PayrollRunId;
+                this.RunNumber = e.RunNumber;
+                this.Year = e.Year;
+                this.Month = e.Month;
+                this.PaymentDate = e.PaymentDate;
+                this.Description = e.Description;
+                this.Status = PayrollRunStatus.Draft;
+                this.CreatedAt = e.OccurredOn;
                 break;
 
             case PayrollRunStatusChangedEvent e:
-                Status = e.NewStatus;
+                this.Status = e.NewStatus;
                 break;
 
             case PayslipGeneratedEvent e:
-                Payslips.Add(new Payslip
+                this.Payslips.Add(new Payslip
                 {
                     Id = e.PayslipId,
                     PayslipNumber = e.PayslipNumber,
@@ -381,15 +382,15 @@ public class PayrollRun : AggregateRoot<Guid>
                 break;
 
             case PayrollApprovedEvent e:
-                Status = PayrollRunStatus.Approved;
-                ApprovedAt = e.ApprovedAt;
-                ApprovedByUserId = e.ApprovedByUserId;
-                foreach (var payslip in Payslips)
+                this.Status = PayrollRunStatus.Approved;
+                this.ApprovedAt = e.ApprovedAt;
+                this.ApprovedByUserId = e.ApprovedByUserId;
+                foreach (Payslip payslip in this.Payslips)
                     payslip.Status = PayslipStatus.Finalized;
                 break;
 
             case PayslipPaidEvent e:
-                var paidPayslip = Payslips.FirstOrDefault(p => p.Id == e.PayslipId);
+                Payslip? paidPayslip = this.Payslips.FirstOrDefault(p => p.Id == e.PayslipId);
                 if (paidPayslip != null)
                 {
                     paidPayslip.Status = PayslipStatus.Paid;
@@ -397,8 +398,8 @@ public class PayrollRun : AggregateRoot<Guid>
                     paidPayslip.PaymentMethod = e.PaymentMethod;
                     paidPayslip.TransactionRef = e.TransactionRef;
                 }
-                if (Payslips.All(p => p.Status == PayslipStatus.Paid))
-                    Status = PayrollRunStatus.Paid;
+
+                if (this.Payslips.All(p => p.Status == PayslipStatus.Paid)) this.Status = PayrollRunStatus.Paid;
                 break;
         }
     }
@@ -421,7 +422,7 @@ public class Payslip
     public DateTime? PaidAt { get; set; }
     public string? PaymentMethod { get; set; }
     public string? TransactionRef { get; set; }
-    public List<PayslipLine> Lines { get; set; } = new();
+    public List<PayslipLine> Lines { get; set; } = [];
 }
 
 #endregion

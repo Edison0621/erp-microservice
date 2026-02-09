@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using ErpSystem.Finance.Domain;
 using ErpSystem.Finance.Infrastructure;
 using MediatR;
 
@@ -11,7 +10,7 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
         builder.Services.AddControllers();
@@ -30,7 +29,7 @@ public class Program
         // MediatR - Exclude Infrastructure handlers that require MongoDB
         builder.Services.AddMediatR(cfg =>
         {
-            cfg.RegisterServicesFromAssembly(typeof(ErpSystem.Finance.Application.GLCommandHandler).Assembly);
+            cfg.RegisterServicesFromAssembly(typeof(Application.GlCommandHandler).Assembly);
             // Exclude MaterialCostProjectionHandler which requires MongoDB
             cfg.AddOpenBehavior(typeof(ExcludeInfrastructureBehavior<,>));
         });
@@ -49,7 +48,7 @@ public class Program
         // EventStoreRepository (needed by FinanceCommandHandler)
         builder.Services.AddScoped(typeof(EventStoreRepository<>));
 
-        var app = builder.Build();
+        WebApplication app = builder.Build();
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -64,13 +63,11 @@ public class Program
         // Ensure databases created
         if (!app.Environment.IsEnvironment("Testing"))
         {
-            using (var scope = app.Services.CreateScope())
-            {
-                var es = scope.ServiceProvider.GetRequiredService<FinanceEventStoreDbContext>();
-                await es.Database.EnsureCreatedAsync();
-                var rs = scope.ServiceProvider.GetRequiredService<FinanceReadDbContext>();
-                await rs.Database.EnsureCreatedAsync();
-            }
+            using IServiceScope scope = app.Services.CreateScope();
+            FinanceEventStoreDbContext es = scope.ServiceProvider.GetRequiredService<FinanceEventStoreDbContext>();
+            await es.Database.EnsureCreatedAsync();
+            FinanceReadDbContext rs = scope.ServiceProvider.GetRequiredService<FinanceReadDbContext>();
+            await rs.Database.EnsureCreatedAsync();
         }
 
         app.Run();
@@ -83,6 +80,6 @@ public class ExcludeInfrastructureBehavior<TRequest, TResponse> : IPipelineBehav
 {
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
-        return await next();
+        return await next(cancellationToken);
     }
 }

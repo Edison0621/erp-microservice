@@ -7,38 +7,27 @@ namespace ErpSystem.Analytics.Application;
 /// <summary>
 /// Application service for coordinating forecasting tasks
 /// </summary>
-public class ForecastingAppService
+public class ForecastingAppService(
+    DemandForecastEngine demandEngine,
+    TimescaleDataExtractor dataExtractor,
+    IEventStore eventStore)
 {
-    private readonly DemandForecastEngine _demandEngine;
-    private readonly TimescaleDataExtractor _dataExtractor;
-    private readonly IEventStore _eventStore;
-
-    public ForecastingAppService(
-        DemandForecastEngine demandEngine,
-        TimescaleDataExtractor dataExtractor,
-        IEventStore eventStore)
-    {
-        _demandEngine = demandEngine;
-        _dataExtractor = dataExtractor;
-        _eventStore = eventStore;
-    }
-
     /// <summary>
     /// Executes demand forecast for a material and saves result
     /// </summary>
     public async Task RunMaterialDemandForecast(string tenantId, string materialId, string warehouseId)
     {
         // 1. Extract history (last 90 days)
-        var history = await _dataExtractor.GetDailyInventoryMovements(materialId, 90);
+        List<TimeSeriesData> history = await dataExtractor.GetDailyInventoryMovements(materialId, 90);
 
         // 2. Predict next 30 days
-        var result = _demandEngine.PredictDemand(history, 30);
+        ForecastResult result = demandEngine.PredictDemand(history, 30);
 
         // 3. Save forecast aggregate
-        var key = $"DF-{materialId}-{warehouseId}-{DateTime.UtcNow:yyyyMMdd}";
-        var forecastId = Guid.Parse(string.Format("{0:X32}", key.GetHashCode()));
+        string key = $"DF-{materialId}-{warehouseId}-{DateTime.UtcNow:yyyyMMdd}";
+        Guid forecastId = Guid.Parse($"{key.GetHashCode():X32}");
         
-        var forecast = DemandForecast.Create(
+        DemandForecast forecast = DemandForecast.Create(
             forecastId,
             tenantId,
             materialId,
@@ -47,6 +36,6 @@ public class ForecastingAppService
             DateTime.UtcNow.AddDays(30),
             result.Confidence);
 
-        await _eventStore.SaveAggregateAsync(forecast);
+        await eventStore.SaveAggregateAsync(forecast);
     }
 }

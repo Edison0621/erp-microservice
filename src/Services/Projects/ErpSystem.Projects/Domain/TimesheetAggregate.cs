@@ -117,9 +117,9 @@ public class Timesheet : AggregateRoot<Guid>
     public string? ApprovedByUserId { get; private set; }
     public string? RejectionReason { get; private set; }
     
-    public List<TimesheetEntry> Entries { get; private set; } = new();
+    public List<TimesheetEntry> Entries { get; private set; } = [];
     
-    public decimal TotalHours => Entries.Sum(e => e.Hours);
+    public decimal TotalHours => this.Entries.Sum(e => e.Hours);
 
     public static Timesheet Create(
         Guid id,
@@ -128,8 +128,8 @@ public class Timesheet : AggregateRoot<Guid>
         string userId,
         DateTime weekStartDate)
     {
-        var weekEndDate = weekStartDate.AddDays(6);
-        var timesheet = new Timesheet();
+        DateTime weekEndDate = weekStartDate.AddDays(6);
+        Timesheet timesheet = new Timesheet();
         timesheet.ApplyChange(new TimesheetCreatedEvent(
             id, timesheetNumber, projectId, userId, weekStartDate, weekEndDate));
         return timesheet;
@@ -137,44 +137,44 @@ public class Timesheet : AggregateRoot<Guid>
 
     public void AddEntry(Guid taskId, DateTime workDate, decimal hours, string? description = null)
     {
-        if (Status != TimesheetStatus.Draft && Status != TimesheetStatus.Rejected)
+        if (this.Status != TimesheetStatus.Draft && this.Status != TimesheetStatus.Rejected)
             throw new InvalidOperationException("Cannot add entries to submitted or approved timesheet");
 
-        if (workDate < WeekStartDate || workDate > WeekEndDate)
+        if (workDate < this.WeekStartDate || workDate > this.WeekEndDate)
             throw new ArgumentException("Work date must be within the timesheet week");
 
-        var entryId = Guid.NewGuid();
-        ApplyChange(new TimesheetEntryAddedEvent(Id, entryId, taskId, workDate, hours, description));
+        Guid entryId = Guid.NewGuid();
+        this.ApplyChange(new TimesheetEntryAddedEvent(this.Id, entryId, taskId, workDate, hours, description));
     }
 
     public void Submit()
     {
-        if (Status != TimesheetStatus.Draft && Status != TimesheetStatus.Rejected)
+        if (this.Status != TimesheetStatus.Draft && this.Status != TimesheetStatus.Rejected)
             throw new InvalidOperationException("Only draft or rejected timesheets can be submitted");
 
-        if (!Entries.Any())
+        if (!this.Entries.Any())
             throw new InvalidOperationException("Cannot submit empty timesheet");
 
-        ApplyChange(new TimesheetSubmittedEvent(Id, TotalHours, DateTime.UtcNow));
+        this.ApplyChange(new TimesheetSubmittedEvent(this.Id, this.TotalHours, DateTime.UtcNow));
     }
 
     public void Approve(string approvedByUserId)
     {
-        if (Status != TimesheetStatus.Submitted)
+        if (this.Status != TimesheetStatus.Submitted)
             throw new InvalidOperationException("Only submitted timesheets can be approved");
 
-        ApplyChange(new TimesheetApprovedEvent(Id, approvedByUserId, DateTime.UtcNow));
+        this.ApplyChange(new TimesheetApprovedEvent(this.Id, approvedByUserId, DateTime.UtcNow));
     }
 
     public void Reject(string rejectedByUserId, string reason)
     {
-        if (Status != TimesheetStatus.Submitted)
+        if (this.Status != TimesheetStatus.Submitted)
             throw new InvalidOperationException("Only submitted timesheets can be rejected");
 
         if (string.IsNullOrWhiteSpace(reason))
             throw new ArgumentException("Rejection reason is required");
 
-        ApplyChange(new TimesheetRejectedEvent(Id, rejectedByUserId, reason));
+        this.ApplyChange(new TimesheetRejectedEvent(this.Id, rejectedByUserId, reason));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -182,33 +182,33 @@ public class Timesheet : AggregateRoot<Guid>
         switch (@event)
         {
             case TimesheetCreatedEvent e:
-                Id = e.TimesheetId;
-                TimesheetNumber = e.TimesheetNumber;
-                ProjectId = e.ProjectId;
-                UserId = e.UserId;
-                WeekStartDate = e.WeekStartDate;
-                WeekEndDate = e.WeekEndDate;
-                Status = TimesheetStatus.Draft;
+                this.Id = e.TimesheetId;
+                this.TimesheetNumber = e.TimesheetNumber;
+                this.ProjectId = e.ProjectId;
+                this.UserId = e.UserId;
+                this.WeekStartDate = e.WeekStartDate;
+                this.WeekEndDate = e.WeekEndDate;
+                this.Status = TimesheetStatus.Draft;
                 break;
 
             case TimesheetEntryAddedEvent e:
-                Entries.Add(TimesheetEntry.Create(e.EntryId, e.TaskId, e.WorkDate, e.Hours, e.Description));
+                this.Entries.Add(TimesheetEntry.Create(e.EntryId, e.TaskId, e.WorkDate, e.Hours, e.Description));
                 break;
 
             case TimesheetSubmittedEvent e:
-                Status = TimesheetStatus.Submitted;
-                SubmittedAt = e.SubmittedAt;
+                this.Status = TimesheetStatus.Submitted;
+                this.SubmittedAt = e.SubmittedAt;
                 break;
 
             case TimesheetApprovedEvent e:
-                Status = TimesheetStatus.Approved;
-                ApprovedAt = e.ApprovedAt;
-                ApprovedByUserId = e.ApprovedByUserId;
+                this.Status = TimesheetStatus.Approved;
+                this.ApprovedAt = e.ApprovedAt;
+                this.ApprovedByUserId = e.ApprovedByUserId;
                 break;
 
             case TimesheetRejectedEvent e:
-                Status = TimesheetStatus.Rejected;
-                RejectionReason = e.Reason;
+                this.Status = TimesheetStatus.Rejected;
+                this.RejectionReason = e.Reason;
                 break;
         }
     }

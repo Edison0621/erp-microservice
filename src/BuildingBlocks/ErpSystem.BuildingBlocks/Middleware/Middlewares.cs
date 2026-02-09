@@ -7,23 +7,14 @@ namespace ErpSystem.BuildingBlocks.Middleware;
 /// <summary>
 /// Request/Response Logging Middleware - Logs all HTTP requests with timing.
 /// </summary>
-public class RequestLoggingMiddleware
+public class RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<RequestLoggingMiddleware> _logger;
-
-    public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
-        var stopwatch = Stopwatch.StartNew();
-        var requestId = Guid.NewGuid().ToString("N")[..8];
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        string requestId = Guid.NewGuid().ToString("N")[..8];
 
-        _logger.LogInformation(
+        logger.LogInformation(
             "[{RequestId}] {Method} {Path} started",
             requestId,
             context.Request.Method,
@@ -31,10 +22,10 @@ public class RequestLoggingMiddleware
 
         try
         {
-            await _next(context);
+            await next(context);
 
             stopwatch.Stop();
-            _logger.LogInformation(
+            logger.LogInformation(
                 "[{RequestId}] {Method} {Path} completed with {StatusCode} in {ElapsedMs}ms",
                 requestId,
                 context.Request.Method,
@@ -45,7 +36,7 @@ public class RequestLoggingMiddleware
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(
+            logger.LogError(
                 ex,
                 "[{RequestId}] {Method} {Path} failed with exception in {ElapsedMs}ms",
                 requestId,
@@ -60,47 +51,32 @@ public class RequestLoggingMiddleware
 /// <summary>
 /// Correlation ID Middleware - Adds correlation ID to all requests for distributed tracing.
 /// </summary>
-public class CorrelationIdMiddleware
+public class CorrelationIdMiddleware(RequestDelegate next)
 {
-    private readonly RequestDelegate _next;
     private const string CorrelationIdHeader = "X-Correlation-ID";
-
-    public CorrelationIdMiddleware(RequestDelegate next)
-    {
-        _next = next;
-    }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        var correlationId = context.Request.Headers[CorrelationIdHeader].FirstOrDefault()
-                            ?? Guid.NewGuid().ToString();
+        string correlationId = context.Request.Headers[CorrelationIdHeader].FirstOrDefault()
+                               ?? Guid.NewGuid().ToString();
 
         context.Items["CorrelationId"] = correlationId;
         context.Response.Headers[CorrelationIdHeader] = correlationId;
 
-        await _next(context);
+        await next(context);
     }
 }
 
 /// <summary>
 /// Global Exception Handler Middleware - Provides consistent error responses.
 /// </summary>
-public class GlobalExceptionMiddleware
+public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<GlobalExceptionMiddleware> _logger;
-
-    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
-    {
-        _next = next;
-        _logger = logger;
-    }
-
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await next(context);
         }
         catch (FluentValidation.ValidationException ex)
         {
@@ -135,7 +111,7 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception");
+            logger.LogError(ex, "Unhandled exception");
             context.Response.StatusCode = 500;
             await context.Response.WriteAsJsonAsync(new
             {

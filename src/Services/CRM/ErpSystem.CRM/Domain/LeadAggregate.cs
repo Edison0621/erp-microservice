@@ -48,7 +48,7 @@ public record ContactInfo(
     string Mobile
 )
 {
-    public string FullName => $"{FirstName} {LastName}".Trim();
+    public string FullName => $"{this.FirstName} {this.LastName}".Trim();
 }
 
 /// <summary>
@@ -179,7 +179,7 @@ public class Lead : AggregateRoot<Guid>
     public string? Notes { get; private set; }
     public int Score { get; private set; }
     public Guid? ConvertedOpportunityId { get; private set; }
-    public List<CommunicationRecord> Communications { get; private set; } = new();
+    public List<CommunicationRecord> Communications { get; private set; } = [];
 
     public static Lead Create(
         Guid id,
@@ -191,7 +191,7 @@ public class Lead : AggregateRoot<Guid>
         string? assignedToUserId = null,
         string? notes = null)
     {
-        var lead = new Lead();
+        Lead lead = new Lead();
         lead.ApplyChange(new LeadCreatedEvent(
             id, leadNumber, contact, company, source, sourceDetails, assignedToUserId, notes));
         return lead;
@@ -199,36 +199,39 @@ public class Lead : AggregateRoot<Guid>
 
     public void ChangeStatus(LeadStatus newStatus, string? reason = null)
     {
-        if (Status == LeadStatus.Converted)
+        if (this.Status == LeadStatus.Converted)
             throw new InvalidOperationException("Cannot change status of a converted lead");
 
-        if (Status == newStatus)
+        if (this.Status == newStatus)
             return;
 
-        ApplyChange(new LeadStatusChangedEvent(Id, Status, newStatus, reason));
+        this.ApplyChange(new LeadStatusChangedEvent(this.Id, this.Status, newStatus, reason));
     }
 
     public void Qualify(int score, string qualificationNotes)
     {
-        if (Status == LeadStatus.Converted || Status == LeadStatus.Lost)
+        if (this.Status == LeadStatus.Converted || this.Status == LeadStatus.Lost)
             throw new InvalidOperationException("Cannot qualify a converted or lost lead");
 
         if (score < 0 || score > 100)
             throw new ArgumentException("Score must be between 0 and 100");
 
-        ApplyChange(new LeadQualifiedEvent(Id, score, qualificationNotes));
+        this.ApplyChange(new LeadQualifiedEvent(this.Id, score, qualificationNotes));
     }
 
     public Guid ConvertToOpportunity(string opportunityName, decimal estimatedValue)
     {
-        if (Status == LeadStatus.Converted)
-            throw new InvalidOperationException("Lead is already converted");
+        switch (this.Status)
+        {
+            case LeadStatus.Converted:
+                throw new InvalidOperationException("Lead is already converted");
+            case LeadStatus.Lost:
+            case LeadStatus.Unqualified:
+                throw new InvalidOperationException("Cannot convert a lost or unqualified lead");
+        }
 
-        if (Status == LeadStatus.Lost || Status == LeadStatus.Unqualified)
-            throw new InvalidOperationException("Cannot convert a lost or unqualified lead");
-
-        var opportunityId = Guid.NewGuid();
-        ApplyChange(new LeadConvertedToOpportunityEvent(Id, opportunityId, opportunityName, estimatedValue));
+        Guid opportunityId = Guid.NewGuid();
+        this.ApplyChange(new LeadConvertedToOpportunityEvent(this.Id, opportunityId, opportunityName, estimatedValue));
         return opportunityId;
     }
 
@@ -237,7 +240,7 @@ public class Lead : AggregateRoot<Guid>
         if (string.IsNullOrWhiteSpace(userId))
             throw new ArgumentException("User ID cannot be empty");
 
-        ApplyChange(new LeadAssignedEvent(Id, AssignedToUserId, userId));
+        this.ApplyChange(new LeadAssignedEvent(this.Id, this.AssignedToUserId, userId));
     }
 
     public void LogCommunication(
@@ -247,9 +250,8 @@ public class Lead : AggregateRoot<Guid>
         DateTime communicationDate,
         string loggedByUserId)
     {
-        var communicationId = Guid.NewGuid();
-        ApplyChange(new CommunicationLoggedEvent(
-            Id, communicationId, type, subject, content, communicationDate, loggedByUserId));
+        Guid communicationId = Guid.NewGuid();
+        this.ApplyChange(new CommunicationLoggedEvent(this.Id, communicationId, type, subject, content, communicationDate, loggedByUserId));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -257,47 +259,45 @@ public class Lead : AggregateRoot<Guid>
         switch (@event)
         {
             case LeadCreatedEvent e:
-                Id = e.LeadId;
-                LeadNumber = e.LeadNumber;
-                Contact = e.Contact;
-                Company = e.Company;
-                Source = e.Source;
-                SourceDetails = e.SourceDetails;
-                AssignedToUserId = e.AssignedToUserId;
-                Notes = e.Notes;
-                Status = LeadStatus.New;
-                Score = 0;
+                this.Id = e.LeadId;
+                this.LeadNumber = e.LeadNumber;
+                this.Contact = e.Contact;
+                this.Company = e.Company;
+                this.Source = e.Source;
+                this.SourceDetails = e.SourceDetails;
+                this.AssignedToUserId = e.AssignedToUserId;
+                this.Notes = e.Notes;
+                this.Status = LeadStatus.New;
+                this.Score = 0;
                 break;
 
             case LeadStatusChangedEvent e:
-                Status = e.NewStatus;
+                this.Status = e.NewStatus;
                 break;
 
             case LeadQualifiedEvent e:
-                Score = e.Score;
-                if (e.Score >= 70)
-                    Status = LeadStatus.Qualified;
+                this.Score = e.Score;
+                if (e.Score >= 70) this.Status = LeadStatus.Qualified;
                 break;
 
             case LeadConvertedToOpportunityEvent e:
-                Status = LeadStatus.Converted;
-                ConvertedOpportunityId = e.OpportunityId;
+                this.Status = LeadStatus.Converted;
+                this.ConvertedOpportunityId = e.OpportunityId;
                 break;
 
             case LeadAssignedEvent e:
-                AssignedToUserId = e.NewUserId;
+                this.AssignedToUserId = e.NewUserId;
                 break;
 
             case CommunicationLoggedEvent e:
-                Communications.Add(new CommunicationRecord(
+                this.Communications.Add(new CommunicationRecord(
                     e.CommunicationId,
                     e.Type,
                     e.Subject,
                     e.Content,
                     e.CommunicationDate,
                     e.LoggedByUserId));
-                if (Status == LeadStatus.New)
-                    Status = LeadStatus.Contacted;
+                if (this.Status == LeadStatus.New) this.Status = LeadStatus.Contacted;
                 break;
         }
     }

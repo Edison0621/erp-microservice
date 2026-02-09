@@ -22,7 +22,7 @@ public class MaintenancePlan : AggregateRoot<Guid>
         MaintenanceFrequency frequency,
         int intervalValue)
     {
-        var plan = new MaintenancePlan();
+        MaintenancePlan plan = new MaintenancePlan();
         plan.ApplyChange(new MaintenancePlanCreatedEvent(
             id,
             tenantId,
@@ -39,12 +39,12 @@ public class MaintenancePlan : AggregateRoot<Guid>
         switch (@event)
         {
             case MaintenancePlanCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                EquipmentId = e.EquipmentId;
-                Name = e.Name;
-                Frequency = e.Frequency;
-                IntervalValue = e.IntervalValue;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.EquipmentId = e.EquipmentId;
+                this.Name = e.Name;
+                this.Frequency = e.Frequency;
+                this.IntervalValue = e.IntervalValue;
                 break;
         }
     }
@@ -68,5 +68,5 @@ public record MaintenancePlanCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

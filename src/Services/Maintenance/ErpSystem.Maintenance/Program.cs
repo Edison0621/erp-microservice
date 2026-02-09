@@ -1,11 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using ErpSystem.Maintenance.Domain;
 using ErpSystem.Maintenance.Infrastructure;
 using MediatR;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Persistence
 builder.Services.AddDbContext<MaintenanceEventStoreDbContext>(options =>
@@ -37,18 +36,16 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Ensure databases created
 if (!app.Environment.IsEnvironment("Testing"))
 {
-    using (var scope = app.Services.CreateScope())
-    {
-        var es = scope.ServiceProvider.GetRequiredService<MaintenanceEventStoreDbContext>();
-        await es.Database.EnsureCreatedAsync();
-        var rs = scope.ServiceProvider.GetRequiredService<MaintenanceReadDbContext>();
-        await rs.Database.EnsureCreatedAsync();
-    }
+    using IServiceScope scope = app.Services.CreateScope();
+    MaintenanceEventStoreDbContext es = scope.ServiceProvider.GetRequiredService<MaintenanceEventStoreDbContext>();
+    await es.Database.EnsureCreatedAsync();
+    MaintenanceReadDbContext rs = scope.ServiceProvider.GetRequiredService<MaintenanceReadDbContext>();
+    await rs.Database.EnsureCreatedAsync();
 }
 
 if (app.Environment.IsDevelopment())

@@ -1,4 +1,3 @@
-using Xunit;
 using FluentAssertions;
 using ErpSystem.Quality.Domain;
 
@@ -13,8 +12,8 @@ public class QualityWorkflowTests
     public void QualityPoint_Should_Defines_Requirements_Correctly()
     {
         // Issue
-        var id = Guid.NewGuid();
-        var point = QualityPoint.Create(
+        Guid id = Guid.NewGuid();
+        QualityPoint point = QualityPoint.Create(
             id,
             "tenant-1",
             "Incoming Inspection",
@@ -34,9 +33,9 @@ public class QualityWorkflowTests
     public void QualityCheck_Should_Handle_Pass_Workflow()
     {
         // Issue
-        var qpId = Guid.NewGuid();
-        var qcId = Guid.NewGuid();
-        var check = QualityCheck.Create(
+        Guid qpId = Guid.NewGuid();
+        Guid qcId = Guid.NewGuid();
+        QualityCheck check = QualityCheck.Create(
             qcId,
             "tenant-1",
             qpId,
@@ -55,8 +54,8 @@ public class QualityWorkflowTests
     public void QualityAlert_Should_Track_Issues()
     {
         // Issue
-        var id = Guid.NewGuid();
-        var alert = QualityAlert.Create(
+        Guid id = Guid.NewGuid();
+        QualityAlert alert = QualityAlert.Create(
             id,
             "tenant-1",
             "Found excessive rust on Batch B12",

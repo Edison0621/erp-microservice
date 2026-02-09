@@ -1,12 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using ErpSystem.Mrp.Domain;
 using ErpSystem.Mrp.Infrastructure;
 using ErpSystem.Mrp.Application;
 using MediatR;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -45,7 +44,7 @@ builder.Services.AddScoped<IInventoryQueryService, DaprInventoryQueryService>();
 builder.Services.AddScoped<IProcurementQueryService, DaprProcurementQueryService>();
 builder.Services.AddScoped<IProductionQueryService, DaprProductionQueryService>();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -58,9 +57,9 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Ensure databases created
-using (var scope = app.Services.CreateScope())
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<MrpDbContext>();
+    MrpDbContext db = scope.ServiceProvider.GetRequiredService<MrpDbContext>();
     await db.Database.EnsureCreatedAsync();
 }
 
@@ -68,11 +67,9 @@ app.Run();
 
 namespace ErpSystem.Mrp.Infrastructure
 {
-    public class MrpDbContext : DbContext
+    public class MrpDbContext(DbContextOptions<MrpDbContext> options) : DbContext(options)
     {
         public DbSet<EventStream> Events { get; set; } = null!;
-
-        public MrpDbContext(DbContextOptions<MrpDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

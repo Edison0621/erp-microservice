@@ -5,6 +5,7 @@ namespace ErpSystem.MasterData.Domain;
 // --- Value Objects ---
 
 public record ContactPerson(string Name, string Position, string Phone, string Email, bool IsPrimary);
+
 public record BankAccount(string BankName, string AccountNumber, string AccountName, bool IsDefault);
 
 // --- Events ---
@@ -71,27 +72,27 @@ public class Supplier : AggregateRoot<Guid>
     public SupplierLevel Level { get; private set; }
     public bool IsBlacklisted { get; private set; }
 
-    private readonly List<ContactPerson> _contacts = new();
-    public IReadOnlyCollection<ContactPerson> Contacts => _contacts.AsReadOnly();
+    private readonly List<ContactPerson> _contacts = [];
+    public IReadOnlyCollection<ContactPerson> Contacts => this._contacts.AsReadOnly();
 
-    private readonly List<BankAccount> _bankAccounts = new();
-    public IReadOnlyCollection<BankAccount> BankAccounts => _bankAccounts.AsReadOnly();
+    private readonly List<BankAccount> _bankAccounts = [];
+    public IReadOnlyCollection<BankAccount> BankAccounts => this._bankAccounts.AsReadOnly();
 
     public static Supplier Create(Guid id, string code, string name, SupplierType type, string creditCode)
     {
-        var supplier = new Supplier();
+        Supplier supplier = new Supplier();
         supplier.ApplyChange(new SupplierCreatedEvent(id, code, name, type, creditCode));
         return supplier;
     }
 
     public void UpdateProfile(List<ContactPerson> contacts, List<BankAccount> bankAccounts)
     {
-        ApplyChange(new SupplierProfileUpdatedEvent(Id, contacts, bankAccounts));
+        this.ApplyChange(new SupplierProfileUpdatedEvent(this.Id, contacts, bankAccounts));
     }
 
     public void SetBlacklisted(bool blacklisted, string reason)
     {
-        ApplyChange(new SupplierStatusChangedEvent(Id, blacklisted, reason));
+        this.ApplyChange(new SupplierStatusChangedEvent(this.Id, blacklisted, reason));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -99,24 +100,24 @@ public class Supplier : AggregateRoot<Guid>
         switch (@event)
         {
             case SupplierCreatedEvent e:
-                Id = e.SupplierId;
-                SupplierCode = e.SupplierCode;
-                SupplierName = e.SupplierName;
-                SupplierType = e.SupplierType;
-                CreditCode = e.CreditCode;
-                Level = SupplierLevel.D;
+                this.Id = e.SupplierId;
+                this.SupplierCode = e.SupplierCode;
+                this.SupplierName = e.SupplierName;
+                this.SupplierType = e.SupplierType;
+                this.CreditCode = e.CreditCode;
+                this.Level = SupplierLevel.D;
                 break;
             case SupplierProfileUpdatedEvent e:
-                _contacts.Clear();
-                _contacts.AddRange(e.Contacts);
-                _bankAccounts.Clear();
-                _bankAccounts.AddRange(e.BankAccounts);
+                this._contacts.Clear();
+                this._contacts.AddRange(e.Contacts);
+                this._bankAccounts.Clear();
+                this._bankAccounts.AddRange(e.BankAccounts);
                 break;
             case SupplierStatusChangedEvent e:
-                IsBlacklisted = e.IsBlacklisted;
+                this.IsBlacklisted = e.IsBlacklisted;
                 break;
             case SupplierLevelChangedEvent e:
-                Level = e.NewLevel;
+                this.Level = e.NewLevel;
                 break;
         }
     }

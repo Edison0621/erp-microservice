@@ -2,7 +2,7 @@ using MediatR;
 
 namespace ErpSystem.HR.Domain;
 
-public class HRIntegrationEvents
+public class HrIntegrationEvents
 {
     public record EmployeeHiredIntegrationEvent(
         Guid EmployeeId,

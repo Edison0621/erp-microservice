@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using ErpSystem.BuildingBlocks.Domain;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace ErpSystem.BuildingBlocks.Outbox;
 
@@ -11,14 +12,14 @@ public class OutboxInterceptor : SaveChangesInterceptor
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
-        var context = eventData.Context;
+        DbContext? context = eventData.Context;
 
         if (context == null)
         {
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }
 
-        var entries = context.ChangeTracker
+        List<EntityEntry<AggregateRoot<Guid>>> entries = context.ChangeTracker
             .Entries<AggregateRoot<Guid>>() // Assuming Guid is the common key, or use object and reflection
             .Where(e => e.Entity.GetChanges().Any())
             .ToList();
@@ -30,14 +31,14 @@ public class OutboxInterceptor : SaveChangesInterceptor
         // Actually DDDBase defines AggregateRoot<TId>. 
         // Most services likely use Guid.
 
-        foreach (var entry in entries)
+        foreach (EntityEntry<AggregateRoot<Guid>> entry in entries)
         {
-            var aggregate = entry.Entity;
-            var events = aggregate.GetChanges();
+            AggregateRoot<Guid> aggregate = entry.Entity;
+            IReadOnlyCollection<IDomainEvent> events = aggregate.GetChanges();
 
-            foreach (var @event in events)
+            foreach (IDomainEvent @event in events)
             {
-                var message = OutboxMessage.Create(@event); 
+                OutboxMessage message = OutboxMessage.Create(@event); 
                 context.Set<OutboxMessage>().Add(message);
             }
 

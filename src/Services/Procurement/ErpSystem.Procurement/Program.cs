@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using ErpSystem.Procurement.Domain;
 using ErpSystem.Procurement.Infrastructure;
 using MediatR;
 
@@ -11,10 +10,7 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
-
-        // Add service defaults
-        
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Persistence
         builder.Services.AddDbContext<ProcurementEventStoreDbContext>(options =>
@@ -49,20 +45,16 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
-        var app = builder.Build();
-
-        
+        WebApplication app = builder.Build();
 
         // Ensure databases created (for dev/demo)
         if (!app.Environment.IsEnvironment("Testing"))
         {
-            using (var scope = app.Services.CreateScope())
-            {
-                var es = scope.ServiceProvider.GetRequiredService<ProcurementEventStoreDbContext>();
-                await es.Database.EnsureCreatedAsync();
-                var rs = scope.ServiceProvider.GetRequiredService<ProcurementReadDbContext>();
-                await rs.Database.EnsureCreatedAsync();
-            }
+            using IServiceScope scope = app.Services.CreateScope();
+            ProcurementEventStoreDbContext es = scope.ServiceProvider.GetRequiredService<ProcurementEventStoreDbContext>();
+            await es.Database.EnsureCreatedAsync();
+            ProcurementReadDbContext rs = scope.ServiceProvider.GetRequiredService<ProcurementReadDbContext>();
+            await rs.Database.EnsureCreatedAsync();
         }
 
         if (app.Environment.IsDevelopment())

@@ -2,16 +2,11 @@ using Microsoft.EntityFrameworkCore;
 using ErpSystem.MasterData.Infrastructure;
 using ErpSystem.MasterData.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using Swashbuckle.AspNetCore.Swagger;
-using Swashbuckle.AspNetCore.SwaggerUI;
 using ErpSystem.MasterData.Application;
 using MediatR;
 using ErpSystem.BuildingBlocks.Domain;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Service Defaults
-
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -45,9 +40,9 @@ builder.Services.AddScoped(typeof(EventStoreRepository<>));
 
 // Domain Services
 builder.Services.AddSingleton<ICodeGenerator, DefaultCodeGenerator>();
-builder.Services.AddScoped<BOMQueries>();
+builder.Services.AddScoped<BomQueries>();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -61,10 +56,10 @@ app.MapControllers();
 // app.MapSubscribeHandler(); 
 
 // Migrate and Ensure DB
-using (var scope = app.Services.CreateScope())
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    var eventStoreDb = scope.ServiceProvider.GetRequiredService<MasterDataEventStoreDbContext>();
-    var readDb = scope.ServiceProvider.GetRequiredService<MasterDataReadDbContext>();
+    MasterDataEventStoreDbContext eventStoreDb = scope.ServiceProvider.GetRequiredService<MasterDataEventStoreDbContext>();
+    MasterDataReadDbContext readDb = scope.ServiceProvider.GetRequiredService<MasterDataReadDbContext>();
     eventStoreDb.Database.EnsureCreated();
     readDb.Database.EnsureCreated();
 }

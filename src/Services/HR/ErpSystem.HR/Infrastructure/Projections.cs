@@ -1,25 +1,17 @@
 using MediatR;
 using ErpSystem.HR.Domain;
-using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.HR.Infrastructure;
 
-public class HRProjections : 
+public class HrProjections(HrReadDbContext readDb) :
     INotificationHandler<EmployeeHiredEvent>,
     INotificationHandler<EmployeeTransferredEvent>,
     INotificationHandler<EmployeePromotedEvent>,
     INotificationHandler<EmployeeTerminatedEvent>
 {
-    private readonly HRReadDbContext _readDb;
-
-    public HRProjections(HRReadDbContext readDb)
-    {
-        _readDb = readDb;
-    }
-
     public async Task Handle(EmployeeHiredEvent n, CancellationToken ct)
     {
-        var model = new EmployeeReadModel
+        EmployeeReadModel model = new EmployeeReadModel
         {
             Id = n.EmployeeId,
             EmployeeNumber = n.EmployeeNumber,
@@ -35,38 +27,38 @@ public class HRProjections :
             PositionId = n.PositionId,
             ManagerEmployeeId = n.ManagerEmployeeId,
             CostCenterId = n.CostCenterId,
-            Status = EmployeeStatus.Active.ToString(),
+            Status = nameof(EmployeeStatus.Active),
             CreatedAt = n.OccurredOn
         };
-        _readDb.Employees.Add(model);
+        readDb.Employees.Add(model);
 
-        _readDb.EmployeeEvents.Add(new EmployeeEventReadModel
+        readDb.EmployeeEvents.Add(new EmployeeEventReadModel
         {
             Id = Guid.NewGuid(),
             EmployeeId = n.EmployeeId,
-            EventType = EmployeeEventType.Hired.ToString(),
+            EventType = nameof(EmployeeEventType.Hired),
             OccurredAt = n.OccurredOn,
             Description = "Employee hired",
             ToDepartmentId = n.DepartmentId,
             ToPositionId = n.PositionId
         });
 
-        await _readDb.SaveChangesAsync(ct);
+        await readDb.SaveChangesAsync(ct);
     }
 
     public async Task Handle(EmployeeTransferredEvent n, CancellationToken ct)
     {
-        var emp = await _readDb.Employees.FindAsync(new object[] { n.EmployeeId }, ct);
+        EmployeeReadModel? emp = await readDb.Employees.FindAsync([n.EmployeeId], ct);
         if (emp != null)
         {
             emp.DepartmentId = n.ToDepartmentId;
             emp.PositionId = n.ToPositionId;
 
-            _readDb.EmployeeEvents.Add(new EmployeeEventReadModel
+            readDb.EmployeeEvents.Add(new EmployeeEventReadModel
             {
                 Id = Guid.NewGuid(),
                 EmployeeId = n.EmployeeId,
-                EventType = EmployeeEventType.Transferred.ToString(),
+                EventType = nameof(EmployeeEventType.Transferred),
                 OccurredAt = n.OccurredOn,
                 Description = n.Reason,
                 FromDepartmentId = n.FromDepartmentId,
@@ -75,49 +67,49 @@ public class HRProjections :
                 ToPositionId = n.ToPositionId
             });
 
-            await _readDb.SaveChangesAsync(ct);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(EmployeePromotedEvent n, CancellationToken ct)
     {
-        var emp = await _readDb.Employees.FindAsync(new object[] { n.EmployeeId }, ct);
+        EmployeeReadModel? emp = await readDb.Employees.FindAsync([n.EmployeeId], ct);
         if (emp != null)
         {
             emp.PositionId = n.ToPositionId;
 
-            _readDb.EmployeeEvents.Add(new EmployeeEventReadModel
+            readDb.EmployeeEvents.Add(new EmployeeEventReadModel
             {
                 Id = Guid.NewGuid(),
                 EmployeeId = n.EmployeeId,
-                EventType = EmployeeEventType.Promoted.ToString(),
+                EventType = nameof(EmployeeEventType.Promoted),
                 OccurredAt = n.OccurredOn,
                 Description = n.Reason,
                 FromPositionId = n.FromPositionId,
                 ToPositionId = n.ToPositionId
             });
 
-            await _readDb.SaveChangesAsync(ct);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(EmployeeTerminatedEvent n, CancellationToken ct)
     {
-        var emp = await _readDb.Employees.FindAsync(new object[] { n.EmployeeId }, ct);
+        EmployeeReadModel? emp = await readDb.Employees.FindAsync([n.EmployeeId], ct);
         if (emp != null)
         {
-            emp.Status = EmployeeStatus.Terminated.ToString();
+            emp.Status = nameof(EmployeeStatus.Terminated);
 
-            _readDb.EmployeeEvents.Add(new EmployeeEventReadModel
+            readDb.EmployeeEvents.Add(new EmployeeEventReadModel
             {
                 Id = Guid.NewGuid(),
                 EmployeeId = n.EmployeeId,
-                EventType = EmployeeEventType.Terminated.ToString(),
+                EventType = nameof(EmployeeEventType.Terminated),
                 OccurredAt = n.OccurredOn,
                 Description = $"{n.Reason}: {n.Note}"
             });
 
-            await _readDb.SaveChangesAsync(ct);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 }

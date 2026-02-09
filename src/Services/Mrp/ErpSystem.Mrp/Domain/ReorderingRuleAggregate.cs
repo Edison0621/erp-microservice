@@ -34,7 +34,7 @@ public class ReorderingRule : AggregateRoot<Guid>
         if (maxQuantity <= minQuantity)
             throw new InvalidOperationException("Max quantity must be greater than min quantity");
 
-        var rule = new ReorderingRule();
+        ReorderingRule rule = new ReorderingRule();
         rule.ApplyChange(new ReorderingRuleCreatedEvent(
             id,
             tenantId,
@@ -57,8 +57,7 @@ public class ReorderingRule : AggregateRoot<Guid>
         if (maxQuantity <= minQuantity)
             throw new InvalidOperationException("Max quantity must be greater than min quantity");
 
-        ApplyChange(new ReorderingRuleQuantitiesUpdatedEvent(
-            Id,
+        this.ApplyChange(new ReorderingRuleQuantitiesUpdatedEvent(this.Id,
             minQuantity,
             maxQuantity,
             reorderQuantity ?? (maxQuantity - minQuantity),
@@ -70,23 +69,23 @@ public class ReorderingRule : AggregateRoot<Guid>
         if (leadTimeDays < 0)
             throw new InvalidOperationException("Lead time cannot be negative");
 
-        ApplyChange(new ReorderingRuleLeadTimeUpdatedEvent(Id, leadTimeDays, DateTime.UtcNow));
+        this.ApplyChange(new ReorderingRuleLeadTimeUpdatedEvent(this.Id, leadTimeDays, DateTime.UtcNow));
     }
 
     public void Activate()
     {
-        if (IsActive)
+        if (this.IsActive)
             return;
 
-        ApplyChange(new ReorderingRuleActivatedEvent(Id, DateTime.UtcNow));
+        this.ApplyChange(new ReorderingRuleActivatedEvent(this.Id, DateTime.UtcNow));
     }
 
     public void Deactivate()
     {
-        if (!IsActive)
+        if (!this.IsActive)
             return;
 
-        ApplyChange(new ReorderingRuleDeactivatedEvent(Id, DateTime.UtcNow));
+        this.ApplyChange(new ReorderingRuleDeactivatedEvent(this.Id, DateTime.UtcNow));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -94,35 +93,34 @@ public class ReorderingRule : AggregateRoot<Guid>
         switch (@event)
         {
             case ReorderingRuleCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                MaterialId = e.MaterialId;
-                WarehouseId = e.WarehouseId;
-                MinQuantity = e.MinQuantity;
-                MaxQuantity = e.MaxQuantity;
-                ReorderQuantity = e.ReorderQuantity;
-                LeadTimeDays = e.LeadTimeDays;
-                Strategy = e.Strategy;
-                IsActive = true;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.MaterialId = e.MaterialId;
+                this.WarehouseId = e.WarehouseId;
+                this.MinQuantity = e.MinQuantity;
+                this.MaxQuantity = e.MaxQuantity;
+                this.ReorderQuantity = e.ReorderQuantity;
+                this.LeadTimeDays = e.LeadTimeDays;
+                this.Strategy = e.Strategy;
+                this.IsActive = true;
                 break;
             case ReorderingRuleQuantitiesUpdatedEvent e:
-                MinQuantity = e.MinQuantity;
-                MaxQuantity = e.MaxQuantity;
-                ReorderQuantity = e.ReorderQuantity;
+                this.MinQuantity = e.MinQuantity;
+                this.MaxQuantity = e.MaxQuantity;
+                this.ReorderQuantity = e.ReorderQuantity;
                 break;
             case ReorderingRuleLeadTimeUpdatedEvent e:
-                LeadTimeDays = e.LeadTimeDays;
+                this.LeadTimeDays = e.LeadTimeDays;
                 break;
             case ReorderingRuleActivatedEvent:
-                IsActive = true;
+                this.IsActive = true;
                 break;
             case ReorderingRuleDeactivatedEvent:
-                IsActive = false;
+                this.IsActive = false;
                 break;
         }
     }
 }
-
 
 public enum ReorderingStrategy
 {
@@ -150,7 +148,7 @@ public record ReorderingRuleCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record ReorderingRuleQuantitiesUpdatedEvent(
@@ -161,7 +159,7 @@ public record ReorderingRuleQuantitiesUpdatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record ReorderingRuleLeadTimeUpdatedEvent(
@@ -170,7 +168,7 @@ public record ReorderingRuleLeadTimeUpdatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record ReorderingRuleActivatedEvent(
@@ -178,7 +176,7 @@ public record ReorderingRuleActivatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record ReorderingRuleDeactivatedEvent(
@@ -186,6 +184,6 @@ public record ReorderingRuleDeactivatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 

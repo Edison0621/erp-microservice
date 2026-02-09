@@ -1,32 +1,26 @@
 using Npgsql;
-using System.Data;
 
 namespace ErpSystem.Analytics.Infrastructure;
 
 /// <summary>
 /// Service to extract historical data from TimescaleDB for AI features
 /// </summary>
-public class TimescaleDataExtractor
+public class TimescaleDataExtractor(IConfiguration configuration)
 {
-    private readonly string _connectionString;
-
-    public TimescaleDataExtractor(IConfiguration configuration)
-    {
-        _connectionString = configuration.GetConnectionString("AnalyticsConnection") ?? throw new ArgumentNullException("AnalyticsConnection");
-    }
+    private readonly string _connectionString = configuration.GetConnectionString("AnalyticsConnection") ?? throw new ArgumentNullException("AnalyticsConnection");
 
     /// <summary>
     /// Extracts aggregated daily inventory movements for a specific material
     /// </summary>
     public async Task<List<TimeSeriesData>> GetDailyInventoryMovements(string materialId, int pastDays)
     {
-        var result = new List<TimeSeriesData>();
+        List<TimeSeriesData> result = [];
 
-        using var conn = new NpgsqlConnection(_connectionString);
+        using NpgsqlConnection conn = new NpgsqlConnection(this._connectionString);
         await conn.OpenAsync();
 
         // Query the inventory_transactions_ts hypertable
-        using var cmd = new NpgsqlCommand(
+        using NpgsqlCommand cmd = new NpgsqlCommand(
             @"SELECT 
                 time_bucket('1 day', time) AS bucket,
                 ABS(SUM(quantity_change)) AS total_usage
@@ -40,7 +34,7 @@ public class TimescaleDataExtractor
         cmd.Parameters.AddWithValue("materialId", materialId);
         cmd.Parameters.AddWithValue("pastDays", pastDays);
 
-        using var reader = await cmd.ExecuteReaderAsync();
+        using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             result.Add(new TimeSeriesData
@@ -58,13 +52,13 @@ public class TimescaleDataExtractor
     /// </summary>
     public async Task<List<TimeSeriesData>> GetDailyCashFlow(int pastDays)
     {
-        var result = new List<TimeSeriesData>();
+        List<TimeSeriesData> result = [];
 
-        using var conn = new NpgsqlConnection(_connectionString);
+        using NpgsqlConnection conn = new NpgsqlConnection(this._connectionString);
         await conn.OpenAsync();
 
         // Query cost movements or a dedicated financial transaction hypertable
-        using var cmd = new NpgsqlCommand(
+        using NpgsqlCommand cmd = new NpgsqlCommand(
             @"SELECT 
                 time_bucket('1 day', time) AS bucket,
                 SUM(total_value) AS daily_value
@@ -75,7 +69,7 @@ public class TimescaleDataExtractor
 
         cmd.Parameters.AddWithValue("pastDays", pastDays);
 
-        using var reader = await cmd.ExecuteReaderAsync();
+        using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             result.Add(new TimeSeriesData
@@ -87,20 +81,21 @@ public class TimescaleDataExtractor
 
         return result;
     }
+
     /// <summary>
     /// Extracts real-time advanced statistics from TimescaleDB aggregates
     /// </summary>
     public async Task<List<MaterialStatsDto>> GetRealTimeStats()
     {
-        var result = new List<MaterialStatsDto>();
+        List<MaterialStatsDto> result = [];
 
-        using var conn = new NpgsqlConnection(_connectionString);
+        using NpgsqlConnection conn = new NpgsqlConnection(this._connectionString);
         await conn.OpenAsync();
 
         try
         {
              // Use TimescaleDB Toolkit functions to access the aggregates
-            using var cmd = new NpgsqlCommand(
+            using NpgsqlCommand cmd = new NpgsqlCommand(
                 @"SELECT 
                     hour,
                     material_id,
@@ -112,7 +107,7 @@ public class TimescaleDataExtractor
                   ORDER BY hour DESC
                   LIMIT 50;", conn); // Limit to top recent stats
 
-            using var reader = await cmd.ExecuteReaderAsync();
+            using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
             {
                 result.Add(new MaterialStatsDto

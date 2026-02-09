@@ -5,11 +5,9 @@ namespace ErpSystem.Projects.Infrastructure;
 
 #region Event Store DbContext
 
-public class ProjectsEventStoreDbContext : DbContext
+public class ProjectsEventStoreDbContext(DbContextOptions<ProjectsEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public ProjectsEventStoreDbContext(DbContextOptions<ProjectsEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,13 +23,11 @@ public class ProjectsEventStoreDbContext : DbContext
 
 #region Read DbContext
 
-public class ProjectsReadDbContext : DbContext
+public class ProjectsReadDbContext(DbContextOptions<ProjectsReadDbContext> options) : DbContext(options)
 {
     public DbSet<ProjectReadModel> Projects { get; set; } = null!;
     public DbSet<TaskReadModel> Tasks { get; set; } = null!;
     public DbSet<TimesheetReadModel> Timesheets { get; set; } = null!;
-
-    public ProjectsReadDbContext(DbContextOptions<ProjectsReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -5,6 +5,7 @@ namespace ErpSystem.MasterData.Domain;
 // --- Value Objects ---
 
 public record ShippingAddress(string Receiver, string Phone, string Address, bool IsDefault);
+
 public record CreditInfo(decimal Limit, int PeriodDays, decimal CurrentArrears);
 
 // --- Events ---
@@ -51,24 +52,24 @@ public class Customer : AggregateRoot<Guid>
     public decimal CreditLimit { get; private set; }
     public int CreditPeriodDays { get; private set; }
     
-    private readonly List<ShippingAddress> _addresses = new();
-    public IReadOnlyCollection<ShippingAddress> Addresses => _addresses.AsReadOnly();
+    private readonly List<ShippingAddress> _addresses = [];
+    public IReadOnlyCollection<ShippingAddress> Addresses => this._addresses.AsReadOnly();
 
     public static Customer Create(Guid id, string code, string name, CustomerType type)
     {
-        var customer = new Customer();
+        Customer customer = new Customer();
         customer.ApplyChange(new CustomerCreatedEvent(id, code, name, type));
         return customer;
     }
 
     public void UpdateCredit(decimal limit, int periodDays)
     {
-        ApplyChange(new CustomerCreditUpdatedEvent(Id, limit, periodDays));
+        this.ApplyChange(new CustomerCreditUpdatedEvent(this.Id, limit, periodDays));
     }
 
     public void UpdateAddresses(List<ShippingAddress> addresses)
     {
-        ApplyChange(new CustomerAddressesUpdatedEvent(Id, addresses));
+        this.ApplyChange(new CustomerAddressesUpdatedEvent(this.Id, addresses));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -76,18 +77,18 @@ public class Customer : AggregateRoot<Guid>
         switch (@event)
         {
             case CustomerCreatedEvent e:
-                Id = e.CustomerId;
-                CustomerCode = e.CustomerCode;
-                CustomerName = e.CustomerName;
-                CustomerType = e.CustomerType;
+                this.Id = e.CustomerId;
+                this.CustomerCode = e.CustomerCode;
+                this.CustomerName = e.CustomerName;
+                this.CustomerType = e.CustomerType;
                 break;
             case CustomerCreditUpdatedEvent e:
-                CreditLimit = e.Limit;
-                CreditPeriodDays = e.PeriodDays;
+                this.CreditLimit = e.Limit;
+                this.CreditPeriodDays = e.PeriodDays;
                 break;
             case CustomerAddressesUpdatedEvent e:
-                _addresses.Clear();
-                _addresses.AddRange(e.Addresses);
+                this._addresses.Clear();
+                this._addresses.AddRange(e.Addresses);
                 break;
         }
     }

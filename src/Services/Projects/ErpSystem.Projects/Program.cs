@@ -4,7 +4,7 @@ using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.Projects.Infrastructure;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Persistence
 builder.Services.AddDbContext<ProjectsEventStoreDbContext>(options =>
@@ -36,7 +36,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "ErpSystem.Projects API", Version = "v1" });
 });
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {

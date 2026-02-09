@@ -23,7 +23,7 @@ public class QualityAlert : AggregateRoot<Guid>
         Guid sourceId,
         QualityAlertPriority priority)
     {
-        var qa = new QualityAlert();
+        QualityAlert qa = new QualityAlert();
         qa.ApplyChange(new QualityAlertCreatedEvent(
             id,
             tenantId,
@@ -37,12 +37,12 @@ public class QualityAlert : AggregateRoot<Guid>
 
     public void Assign(string assignedTo)
     {
-        ApplyChange(new QualityAlertAssignedEvent(Id, assignedTo, DateTime.UtcNow));
+        this.ApplyChange(new QualityAlertAssignedEvent(this.Id, assignedTo, DateTime.UtcNow));
     }
 
     public void Resolve(string resolution)
     {
-        ApplyChange(new QualityAlertResolvedEvent(Id, resolution, DateTime.UtcNow));
+        this.ApplyChange(new QualityAlertResolvedEvent(this.Id, resolution, DateTime.UtcNow));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -50,20 +50,20 @@ public class QualityAlert : AggregateRoot<Guid>
         switch (@event)
         {
             case QualityAlertCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                Description = e.Description;
-                MaterialId = e.MaterialId;
-                SourceId = e.SourceId;
-                Priority = e.Priority;
-                Status = QualityAlertStatus.New;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.Description = e.Description;
+                this.MaterialId = e.MaterialId;
+                this.SourceId = e.SourceId;
+                this.Priority = e.Priority;
+                this.Status = QualityAlertStatus.New;
                 break;
             case QualityAlertAssignedEvent e:
-                AssignedTo = e.AssignedTo;
-                Status = QualityAlertStatus.InProgress;
+                this.AssignedTo = e.AssignedTo;
+                this.Status = QualityAlertStatus.InProgress;
                 break;
             case QualityAlertResolvedEvent:
-                Status = QualityAlertStatus.Resolved;
+                this.Status = QualityAlertStatus.Resolved;
                 break;
         }
     }
@@ -95,7 +95,7 @@ public record QualityAlertCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record QualityAlertAssignedEvent(
@@ -104,7 +104,7 @@ public record QualityAlertAssignedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record QualityAlertResolvedEvent(
@@ -113,5 +113,5 @@ public record QualityAlertResolvedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

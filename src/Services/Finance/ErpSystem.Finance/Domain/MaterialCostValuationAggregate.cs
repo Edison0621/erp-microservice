@@ -22,7 +22,7 @@ public class MaterialCostValuation : AggregateRoot<Guid>
         string warehouseId,
         decimal initialCost)
     {
-        var valuation = new MaterialCostValuation();
+        MaterialCostValuation valuation = new MaterialCostValuation();
         valuation.ApplyChange(new MaterialCostValuationCreatedEvent(
             id,
             tenantId,
@@ -35,6 +35,7 @@ public class MaterialCostValuation : AggregateRoot<Guid>
 
     /// <summary>
     /// Process goods receipt - updates moving average cost
+    /// </summary>
     public void ProcessReceipt(
         string sourceId,
         string sourceType,
@@ -45,16 +46,12 @@ public class MaterialCostValuation : AggregateRoot<Guid>
         if (quantity <= 0)
             throw new InvalidOperationException("Receipt quantity must be positive");
 
-        var receiptValue = quantity * unitCost;
-        var newTotalValue = TotalValue + receiptValue;
-        var newTotalQuantity = TotalQuantityOnHand + quantity;
-        var newAverageCost = newTotalQuantity > 0 ? newTotalValue / newTotalQuantity : 0;
+        decimal receiptValue = quantity * unitCost;
+        decimal newTotalValue = this.TotalValue + receiptValue;
+        decimal newTotalQuantity = this.TotalQuantityOnHand + quantity;
+        decimal newAverageCost = newTotalQuantity > 0 ? newTotalValue / newTotalQuantity : 0;
 
-        ApplyChange(new MaterialReceiptProcessedEvent(
-            Id,
-            TenantId,
-            MaterialId,
-            WarehouseId,
+        this.ApplyChange(new MaterialReceiptProcessedEvent(this.Id, this.TenantId, this.MaterialId, this.WarehouseId,
             sourceId,
             sourceType,
             quantity,
@@ -78,22 +75,17 @@ public class MaterialCostValuation : AggregateRoot<Guid>
         if (quantity <= 0)
             throw new InvalidOperationException("Issue quantity must be positive");
 
-        if (quantity > TotalQuantityOnHand)
-            throw new InvalidOperationException($"Insufficient quantity. Available: {TotalQuantityOnHand}, Requested: {quantity}");
+        if (quantity > this.TotalQuantityOnHand)
+            throw new InvalidOperationException($"Insufficient quantity. Available: {this.TotalQuantityOnHand}, Requested: {quantity}");
 
-        var issueValue = quantity * CurrentAverageCost;
-        var newTotalValue = TotalValue - issueValue;
-        var newTotalQuantity = TotalQuantityOnHand - quantity;
+        decimal issueValue = quantity * this.CurrentAverageCost;
+        decimal newTotalValue = this.TotalValue - issueValue;
+        decimal newTotalQuantity = this.TotalQuantityOnHand - quantity;
 
-        ApplyChange(new MaterialIssueProcessedEvent(
-            Id,
-            TenantId,
-            MaterialId,
-            WarehouseId,
+        this.ApplyChange(new MaterialIssueProcessedEvent(this.Id, this.TenantId, this.MaterialId, this.WarehouseId,
             sourceId,
             sourceType,
-            quantity,
-            CurrentAverageCost,
+            quantity, this.CurrentAverageCost,
             issueValue,
             newTotalQuantity,
             newTotalValue,
@@ -105,27 +97,27 @@ public class MaterialCostValuation : AggregateRoot<Guid>
         switch (@event)
         {
             case MaterialCostValuationCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                MaterialId = e.MaterialId;
-                WarehouseId = e.WarehouseId;
-                CurrentAverageCost = e.InitialCost;
-                TotalQuantityOnHand = 0;
-                TotalValue = 0;
-                LastUpdated = e.OccurredAt;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.MaterialId = e.MaterialId;
+                this.WarehouseId = e.WarehouseId;
+                this.CurrentAverageCost = e.InitialCost;
+                this.TotalQuantityOnHand = 0;
+                this.TotalValue = 0;
+                this.LastUpdated = e.OccurredAt;
                 break;
 
             case MaterialReceiptProcessedEvent e:
-                TotalValue = e.NewTotalValue;
-                TotalQuantityOnHand = e.NewTotalQuantity;
-                CurrentAverageCost = e.NewAverageCost;
-                LastUpdated = e.OccurredAt;
+                this.TotalValue = e.NewTotalValue;
+                this.TotalQuantityOnHand = e.NewTotalQuantity;
+                this.CurrentAverageCost = e.NewAverageCost;
+                this.LastUpdated = e.OccurredAt;
                 break;
 
             case MaterialIssueProcessedEvent e:
-                TotalValue = e.NewTotalValue;
-                TotalQuantityOnHand = e.NewTotalQuantity;
-                LastUpdated = e.OccurredAt;
+                this.TotalValue = e.NewTotalValue;
+                this.TotalQuantityOnHand = e.NewTotalQuantity;
+                this.LastUpdated = e.OccurredAt;
                 break;
         }
     }
@@ -141,7 +133,7 @@ public record MaterialCostValuationCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record MaterialReceiptProcessedEvent(
@@ -160,7 +152,7 @@ public record MaterialReceiptProcessedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record MaterialIssueProcessedEvent(
@@ -178,5 +170,5 @@ public record MaterialIssueProcessedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

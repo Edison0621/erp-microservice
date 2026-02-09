@@ -8,17 +8,8 @@ namespace ErpSystem.CRM.API;
 
 [ApiController]
 [Route("api/[controller]")]
-public class LeadsController : ControllerBase
+public class LeadsController(EventStoreRepository<Lead> repository, CrmReadDbContext readDb) : ControllerBase
 {
-    private readonly EventStoreRepository<Lead> _repository;
-    private readonly CrmReadDbContext _readDb;
-
-    public LeadsController(EventStoreRepository<Lead> repository, CrmReadDbContext readDb)
-    {
-        _repository = repository;
-        _readDb = readDb;
-    }
-
     #region Queries
 
     /// <summary>
@@ -32,7 +23,7 @@ public class LeadsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var query = _readDb.Leads.AsQueryable();
+        IQueryable<LeadReadModel> query = readDb.Leads.AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
             query = query.Where(l => l.Status == status);
@@ -41,14 +32,14 @@ public class LeadsController : ControllerBase
         if (!string.IsNullOrEmpty(assignedTo))
             query = query.Where(l => l.AssignedToUserId == assignedTo);
 
-        var total = await query.CountAsync();
-        var items = await query
+        int total = await query.CountAsync();
+        List<LeadReadModel> items = await query
             .OrderByDescending(l => l.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        return Ok(new { total, page, pageSize, items });
+        return this.Ok(new { total, page, pageSize, items });
     }
 
     /// <summary>
@@ -57,9 +48,9 @@ public class LeadsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetLead(Guid id)
     {
-        var lead = await _readDb.Leads.FindAsync(id);
-        if (lead == null) return NotFound();
-        return Ok(lead);
+        LeadReadModel? lead = await readDb.Leads.FindAsync(id);
+        if (lead == null) return this.NotFound();
+        return this.Ok(lead);
     }
 
     /// <summary>
@@ -68,14 +59,14 @@ public class LeadsController : ControllerBase
     [HttpGet("statistics")]
     public async Task<IActionResult> GetLeadStatistics()
     {
-        var stats = await _readDb.Leads
+        var stats = await readDb.Leads
             .GroupBy(l => l.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync();
 
-        var totalScore = await _readDb.Leads.AverageAsync(l => (double?)l.Score) ?? 0;
+        double totalScore = await readDb.Leads.AverageAsync(l => (double?)l.Score) ?? 0;
 
-        return Ok(new { byStatus = stats, averageScore = totalScore });
+        return this.Ok(new { byStatus = stats, averageScore = totalScore });
     }
 
     #endregion
@@ -88,9 +79,9 @@ public class LeadsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateLead([FromBody] CreateLeadRequest request)
     {
-        var leadNumber = $"LD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+        string leadNumber = $"LD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
         
-        var contact = new ContactInfo(
+        ContactInfo contact = new ContactInfo(
             request.FirstName,
             request.LastName,
             request.Email,
@@ -108,7 +99,7 @@ public class LeadsController : ControllerBase
                 request.Address ?? "");
         }
 
-        var lead = Lead.Create(
+        Lead lead = Lead.Create(
             Guid.NewGuid(),
             leadNumber,
             contact,
@@ -118,9 +109,9 @@ public class LeadsController : ControllerBase
             request.AssignedToUserId,
             request.Notes);
 
-        await _repository.SaveAsync(lead);
+        await repository.SaveAsync(lead);
 
-        return CreatedAtAction(nameof(GetLead), new { id = lead.Id }, 
+        return this.CreatedAtAction(nameof(this.GetLead), new { id = lead.Id }, 
             new { id = lead.Id, leadNumber = lead.LeadNumber });
     }
 
@@ -130,13 +121,13 @@ public class LeadsController : ControllerBase
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateLeadStatusRequest request)
     {
-        var lead = await _repository.LoadAsync(id);
-        if (lead == null) return NotFound();
+        Lead? lead = await repository.LoadAsync(id);
+        if (lead == null) return this.NotFound();
 
         lead.ChangeStatus(Enum.Parse<LeadStatus>(request.Status), request.Reason);
-        await _repository.SaveAsync(lead);
+        await repository.SaveAsync(lead);
 
-        return Ok(new { id, status = request.Status });
+        return this.Ok(new { id, status = request.Status });
     }
 
     /// <summary>
@@ -145,13 +136,13 @@ public class LeadsController : ControllerBase
     [HttpPost("{id:guid}/qualify")]
     public async Task<IActionResult> QualifyLead(Guid id, [FromBody] QualifyLeadRequest request)
     {
-        var lead = await _repository.LoadAsync(id);
-        if (lead == null) return NotFound();
+        Lead? lead = await repository.LoadAsync(id);
+        if (lead == null) return this.NotFound();
 
         lead.Qualify(request.Score, request.Notes ?? "");
-        await _repository.SaveAsync(lead);
+        await repository.SaveAsync(lead);
 
-        return Ok(new { id, score = request.Score, status = lead.Status.ToString() });
+        return this.Ok(new { id, score = request.Score, status = lead.Status.ToString() });
     }
 
     /// <summary>
@@ -160,13 +151,13 @@ public class LeadsController : ControllerBase
     [HttpPost("{id:guid}/convert")]
     public async Task<IActionResult> ConvertToOpportunity(Guid id, [FromBody] ConvertLeadRequest request)
     {
-        var lead = await _repository.LoadAsync(id);
-        if (lead == null) return NotFound();
+        Lead? lead = await repository.LoadAsync(id);
+        if (lead == null) return this.NotFound();
 
-        var opportunityId = lead.ConvertToOpportunity(request.OpportunityName, request.EstimatedValue);
-        await _repository.SaveAsync(lead);
+        Guid opportunityId = lead.ConvertToOpportunity(request.OpportunityName, request.EstimatedValue);
+        await repository.SaveAsync(lead);
 
-        return Ok(new { id, opportunityId, opportunityName = request.OpportunityName });
+        return this.Ok(new { id, opportunityId, opportunityName = request.OpportunityName });
     }
 
     /// <summary>
@@ -175,13 +166,13 @@ public class LeadsController : ControllerBase
     [HttpPut("{id:guid}/assign")]
     public async Task<IActionResult> AssignLead(Guid id, [FromBody] AssignLeadRequest request)
     {
-        var lead = await _repository.LoadAsync(id);
-        if (lead == null) return NotFound();
+        Lead? lead = await repository.LoadAsync(id);
+        if (lead == null) return this.NotFound();
 
         lead.AssignTo(request.UserId);
-        await _repository.SaveAsync(lead);
+        await repository.SaveAsync(lead);
 
-        return Ok(new { id, assignedTo = request.UserId });
+        return this.Ok(new { id, assignedTo = request.UserId });
     }
 
     /// <summary>
@@ -190,8 +181,8 @@ public class LeadsController : ControllerBase
     [HttpPost("{id:guid}/communications")]
     public async Task<IActionResult> LogCommunication(Guid id, [FromBody] LogCommunicationRequest request)
     {
-        var lead = await _repository.LoadAsync(id);
-        if (lead == null) return NotFound();
+        Lead? lead = await repository.LoadAsync(id);
+        if (lead == null) return this.NotFound();
 
         lead.LogCommunication(
             Enum.Parse<CommunicationType>(request.Type),
@@ -200,9 +191,9 @@ public class LeadsController : ControllerBase
             request.CommunicationDate ?? DateTime.UtcNow,
             request.LoggedByUserId);
 
-        await _repository.SaveAsync(lead);
+        await repository.SaveAsync(lead);
 
-        return Ok(new { id, message = "Communication logged" });
+        return this.Ok(new { id, message = "Communication logged" });
     }
 
     #endregion
@@ -228,8 +219,11 @@ public record CreateLeadRequest(
 );
 
 public record UpdateLeadStatusRequest(string Status, string? Reason);
+
 public record QualifyLeadRequest(int Score, string? Notes);
+
 public record ConvertLeadRequest(string OpportunityName, decimal EstimatedValue);
+
 public record AssignLeadRequest(string UserId);
 
 public record LogCommunicationRequest(

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.Inventory.Infrastructure;
 
-public class InventoryProjections : 
+public class InventoryProjections(InventoryReadDbContext readDb) :
     INotificationHandler<InventoryItemCreatedEvent>,
     INotificationHandler<StockReceivedEvent>,
     INotificationHandler<StockIssuedEvent>,
@@ -13,16 +13,9 @@ public class InventoryProjections :
     INotificationHandler<StockAdjustedEvent>,
     INotificationHandler<StockTransferredEvent>
 {
-    private readonly InventoryReadDbContext _readDb;
-
-    public InventoryProjections(InventoryReadDbContext readDb)
-    {
-        _readDb = readDb;
-    }
-
     public async Task Handle(InventoryItemCreatedEvent n, CancellationToken ct)
     {
-        var item = await _readDb.InventoryItems.FindAsync(new object[] { n.InventoryItemId }, ct);
+        InventoryItemReadModel? item = await readDb.InventoryItems.FindAsync([n.InventoryItemId], ct);
         if (item == null)
         {
             item = new InventoryItemReadModel
@@ -38,14 +31,14 @@ public class InventoryProjections :
                 TotalValue = 0,
                 LastMovementAt = n.OccurredOn
             };
-            _readDb.InventoryItems.Add(item);
-            await _readDb.SaveChangesAsync(ct);
+            readDb.InventoryItems.Add(item);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(StockReceivedEvent n, CancellationToken ct)
     {
-        var item = await _readDb.InventoryItems
+        InventoryItemReadModel? item = await readDb.InventoryItems
             .FirstOrDefaultAsync(x => x.WarehouseId == n.WarehouseId && x.BinId == n.BinId && x.MaterialId == n.MaterialId, ct);
 
         if (item == null)
@@ -62,7 +55,7 @@ public class InventoryProjections :
                 UnitCost = n.UnitCost,
                 TotalValue = 0
             };
-            _readDb.InventoryItems.Add(item);
+            readDb.InventoryItems.Add(item);
         }
 
         item.OnHandQuantity += n.Quantity;
@@ -71,7 +64,7 @@ public class InventoryProjections :
         item.AvailableQuantity = item.OnHandQuantity - item.ReservedQuantity;
         item.LastMovementAt = n.OccurredOn;
 
-        _readDb.StockTransactions.Add(new StockTransactionReadModel
+        readDb.StockTransactions.Add(new StockTransactionReadModel
         {
             Id = Guid.NewGuid(),
             InventoryItemId = item.Id,
@@ -84,12 +77,12 @@ public class InventoryProjections :
             OccurredOn = n.OccurredOn
         });
 
-        await _readDb.SaveChangesAsync(ct);
+        await readDb.SaveChangesAsync(ct);
     }
 
     public async Task Handle(StockIssuedEvent n, CancellationToken ct)
     {
-        var item = await _readDb.InventoryItems.FindAsync(new object[] { n.InventoryItemId }, ct);
+        InventoryItemReadModel? item = await readDb.InventoryItems.FindAsync([n.InventoryItemId], ct);
         if (item != null)
         {
             item.OnHandQuantity -= n.Quantity;
@@ -104,9 +97,10 @@ public class InventoryProjections :
                 item.UnitCost = 0;
                 item.TotalValue = 0;
             }
+
             item.LastMovementAt = n.OccurredOn;
 
-            _readDb.StockTransactions.Add(new StockTransactionReadModel
+            readDb.StockTransactions.Add(new StockTransactionReadModel
             {
                 Id = Guid.NewGuid(),
                 InventoryItemId = item.Id,
@@ -119,19 +113,19 @@ public class InventoryProjections :
                 OccurredOn = n.OccurredOn
             });
 
-            await _readDb.SaveChangesAsync(ct);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(StockReservedEvent n, CancellationToken ct)
     {
-        var item = await _readDb.InventoryItems.FindAsync(new object[] { n.InventoryItemId }, ct);
+        InventoryItemReadModel? item = await readDb.InventoryItems.FindAsync([n.InventoryItemId], ct);
         if (item != null)
         {
             item.ReservedQuantity += n.Quantity;
             item.AvailableQuantity = item.OnHandQuantity - item.ReservedQuantity;
 
-            _readDb.StockReservations.Add(new StockReservationReadModel
+            readDb.StockReservations.Add(new StockReservationReadModel
             {
                 Id = n.ReservationId,
                 InventoryItemId = n.InventoryItemId,
@@ -143,14 +137,14 @@ public class InventoryProjections :
                 IsReleased = false
             });
 
-            await _readDb.SaveChangesAsync(ct);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(ReservationReleasedEvent n, CancellationToken ct)
     {
-        var item = await _readDb.InventoryItems.FindAsync(new object[] { n.InventoryItemId }, ct);
-        var reservation = await _readDb.StockReservations.FindAsync(new object[] { n.ReservationId }, ct);
+        InventoryItemReadModel? item = await readDb.InventoryItems.FindAsync([n.InventoryItemId], ct);
+        StockReservationReadModel? reservation = await readDb.StockReservations.FindAsync([n.ReservationId], ct);
         
         if (item != null && reservation != null && !reservation.IsReleased)
         {
@@ -158,20 +152,20 @@ public class InventoryProjections :
             item.AvailableQuantity = item.OnHandQuantity - item.ReservedQuantity;
             reservation.IsReleased = true;
 
-            await _readDb.SaveChangesAsync(ct);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(StockAdjustedEvent n, CancellationToken ct)
     {
-        var item = await _readDb.InventoryItems.FindAsync(new object[] { n.InventoryItemId }, ct);
+        InventoryItemReadModel? item = await readDb.InventoryItems.FindAsync([n.InventoryItemId], ct);
         if (item != null)
         {
             item.OnHandQuantity = n.NewQuantity;
             item.AvailableQuantity = item.OnHandQuantity - item.ReservedQuantity;
             item.LastMovementAt = n.OccurredOn;
 
-            _readDb.StockTransactions.Add(new StockTransactionReadModel
+            readDb.StockTransactions.Add(new StockTransactionReadModel
             {
                 Id = Guid.NewGuid(),
                 InventoryItemId = item.Id,
@@ -184,20 +178,20 @@ public class InventoryProjections :
                 OccurredOn = n.OccurredOn
             });
 
-            await _readDb.SaveChangesAsync(ct);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(StockTransferredEvent n, CancellationToken ct)
     {
-        var item = await _readDb.InventoryItems.FindAsync(new object[] { n.InventoryItemId }, ct);
+        InventoryItemReadModel? item = await readDb.InventoryItems.FindAsync([n.InventoryItemId], ct);
         if (item != null)
         {
             item.WarehouseId = n.ToWarehouseId;
             item.BinId = n.ToBinId;
             item.LastMovementAt = n.OccurredOn;
 
-            _readDb.StockTransactions.Add(new StockTransactionReadModel
+            readDb.StockTransactions.Add(new StockTransactionReadModel
             {
                 Id = Guid.NewGuid(),
                 InventoryItemId = item.Id,
@@ -210,7 +204,7 @@ public class InventoryProjections :
                 OccurredOn = n.OccurredOn
             });
 
-            await _readDb.SaveChangesAsync(ct);
+            await readDb.SaveChangesAsync(ct);
         }
     }
 }

@@ -1,11 +1,10 @@
 using MediatR;
 using ErpSystem.Finance.Domain;
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace ErpSystem.Finance.Infrastructure;
 
-public class FinanceProjections : 
+public class FinanceProjections(FinanceReadDbContext context) :
     INotificationHandler<InvoiceCreatedEvent>,
     INotificationHandler<InvoiceLinesUpdatedEvent>,
     INotificationHandler<InvoiceIssuedEvent>,
@@ -15,16 +14,9 @@ public class FinanceProjections :
     INotificationHandler<PaymentAllocatedEvent>,
     INotificationHandler<PaymentCompletedEvent>
 {
-    private readonly FinanceReadDbContext _context;
-
-    public FinanceProjections(FinanceReadDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task Handle(InvoiceCreatedEvent e, CancellationToken ct)
     {
-        var model = new InvoiceReadModel
+        InvoiceReadModel model = new InvoiceReadModel
         {
             InvoiceId = e.InvoiceId,
             InvoiceNumber = e.InvoiceNumber,
@@ -37,57 +29,57 @@ public class FinanceProjections :
             Status = (int)InvoiceStatus.Draft,
             LinesJson = "[]"
         };
-        _context.Invoices.Add(model);
-        await _context.SaveChangesAsync(ct);
+        context.Invoices.Add(model);
+        await context.SaveChangesAsync(ct);
     }
 
     public async Task Handle(InvoiceLinesUpdatedEvent e, CancellationToken ct)
     {
-        var model = await _context.Invoices.FindAsync(new object[] { e.InvoiceId }, ct);
+        InvoiceReadModel? model = await context.Invoices.FindAsync([e.InvoiceId], ct);
         if (model != null)
         {
             model.LinesJson = JsonSerializer.Serialize(e.Lines);
             model.TotalAmount = e.Lines.Sum(l => l.TotalAmount);
             model.OutstandingAmount = model.TotalAmount - model.PaidAmount;
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(InvoiceIssuedEvent e, CancellationToken ct)
     {
-        var model = await _context.Invoices.FindAsync(new object[] { e.InvoiceId }, ct);
+        InvoiceReadModel? model = await context.Invoices.FindAsync([e.InvoiceId], ct);
         if (model != null)
         {
             model.Status = (int)InvoiceStatus.Issued;
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(PaymentRecordedEvent e, CancellationToken ct)
     {
-        var model = await _context.Invoices.FindAsync(new object[] { e.InvoiceId }, ct);
+        InvoiceReadModel? model = await context.Invoices.FindAsync([e.InvoiceId], ct);
         if (model != null)
         {
             model.PaidAmount += e.Amount;
             model.OutstandingAmount = model.TotalAmount - model.PaidAmount;
             model.Status = model.OutstandingAmount <= 0.001m ? (int)InvoiceStatus.FullyPaid : (int)InvoiceStatus.PartiallyPaid;
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(InvoiceStatusChangedEvent e, CancellationToken ct)
     {
-        var model = await _context.Invoices.FindAsync(new object[] { e.InvoiceId }, ct);
+        InvoiceReadModel? model = await context.Invoices.FindAsync([e.InvoiceId], ct);
         if (model != null)
         {
             model.Status = (int)e.NewStatus;
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(PaymentCreatedEvent e, CancellationToken ct)
     {
-        var model = new PaymentReadModel
+        PaymentReadModel model = new PaymentReadModel
         {
             PaymentId = e.PaymentId,
             PaymentNumber = e.PaymentNumber,
@@ -102,28 +94,28 @@ public class FinanceProjections :
             ReferenceNo = e.ReferenceNo,
             Status = (int)PaymentStatus.Draft
         };
-        _context.Payments.Add(model);
-        await _context.SaveChangesAsync(ct);
+        context.Payments.Add(model);
+        await context.SaveChangesAsync(ct);
     }
 
     public async Task Handle(PaymentAllocatedEvent e, CancellationToken ct)
     {
-        var model = await _context.Payments.FindAsync(new object[] { e.PaymentId }, ct);
+        PaymentReadModel? model = await context.Payments.FindAsync([e.PaymentId], ct);
         if (model != null)
         {
             model.UnallocatedAmount -= e.AllocationAmount;
             model.InvoiceId = e.InvoiceId; // Capture the invoice ID
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(PaymentCompletedEvent e, CancellationToken ct)
     {
-        var model = await _context.Payments.FindAsync(new object[] { e.PaymentId }, ct);
+        PaymentReadModel? model = await context.Payments.FindAsync([e.PaymentId], ct);
         if (model != null)
         {
             model.Status = (int)PaymentStatus.Completed;
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
         }
     }
 }

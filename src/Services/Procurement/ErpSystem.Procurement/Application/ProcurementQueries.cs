@@ -4,30 +4,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.Procurement.Application;
 
-public record GetPOByIdQuery(Guid Id) : IRequest<PurchaseOrderReadModel?>;
+public record GetPoByIdQuery(Guid Id) : IRequest<PurchaseOrderReadModel?>;
+
 public record SearchPOsQuery(string? SupplierId, string? Status, int Page = 1, int PageSize = 20) : IRequest<List<PurchaseOrderReadModel>>;
+
 public record GetSupplierPriceHistoryQuery(string MaterialId, string? SupplierId) : IRequest<List<SupplierPriceHistory>>;
 
-public class ProcurementQueryHandler : 
-    IRequestHandler<GetPOByIdQuery, PurchaseOrderReadModel?>,
+public class ProcurementQueryHandler(ProcurementReadDbContext readDb) :
+    IRequestHandler<GetPoByIdQuery, PurchaseOrderReadModel?>,
     IRequestHandler<SearchPOsQuery, List<PurchaseOrderReadModel>>,
     IRequestHandler<GetSupplierPriceHistoryQuery, List<SupplierPriceHistory>>
 {
-    private readonly ProcurementReadDbContext _readDb;
-
-    public ProcurementQueryHandler(ProcurementReadDbContext readDb)
+    public async Task<PurchaseOrderReadModel?> Handle(GetPoByIdQuery request, CancellationToken ct)
     {
-        _readDb = readDb;
-    }
-
-    public async Task<PurchaseOrderReadModel?> Handle(GetPOByIdQuery request, CancellationToken ct)
-    {
-        return await _readDb.PurchaseOrders.FindAsync(new object[] { request.Id }, ct);
+        return await readDb.PurchaseOrders.FindAsync([request.Id], ct);
     }
 
     public async Task<List<PurchaseOrderReadModel>> Handle(SearchPOsQuery request, CancellationToken ct)
     {
-        var query = _readDb.PurchaseOrders.AsNoTracking().AsQueryable();
+        IQueryable<PurchaseOrderReadModel> query = readDb.PurchaseOrders.AsNoTracking().AsQueryable();
         if (!string.IsNullOrEmpty(request.SupplierId)) query = query.Where(x => x.SupplierId == request.SupplierId);
         if (!string.IsNullOrEmpty(request.Status)) query = query.Where(x => x.Status == request.Status);
         
@@ -39,7 +34,7 @@ public class ProcurementQueryHandler :
 
     public async Task<List<SupplierPriceHistory>> Handle(GetSupplierPriceHistoryQuery request, CancellationToken ct)
     {
-        var query = _readDb.PriceHistory.AsNoTracking().AsQueryable();
+        IQueryable<SupplierPriceHistory> query = readDb.PriceHistory.AsNoTracking().AsQueryable();
         query = query.Where(x => x.MaterialId == request.MaterialId);
         if (!string.IsNullOrEmpty(request.SupplierId)) query = query.Where(x => x.SupplierId == request.SupplierId);
         

@@ -23,7 +23,7 @@ public class QualityCheck : AggregateRoot<Guid>
         string sourceType,
         string materialId)
     {
-        var qc = new QualityCheck();
+        QualityCheck qc = new QualityCheck();
         qc.ApplyChange(new QualityCheckCreatedEvent(
             id,
             tenantId,
@@ -37,18 +37,18 @@ public class QualityCheck : AggregateRoot<Guid>
 
     public void Pass(string? note, string performedBy)
     {
-        if (Status != QualityCheckStatus.Pending)
+        if (this.Status != QualityCheckStatus.Pending)
             throw new InvalidOperationException("Only pending checks can be passed");
 
-        ApplyChange(new QualityCheckPassedEvent(Id, note, performedBy, DateTime.UtcNow));
+        this.ApplyChange(new QualityCheckPassedEvent(this.Id, note, performedBy, DateTime.UtcNow));
     }
 
     public void Fail(string reason, string performedBy)
     {
-        if (Status != QualityCheckStatus.Pending)
+        if (this.Status != QualityCheckStatus.Pending)
             throw new InvalidOperationException("Only pending checks can be failed");
 
-        ApplyChange(new QualityCheckFailedEvent(Id, reason, performedBy, DateTime.UtcNow));
+        this.ApplyChange(new QualityCheckFailedEvent(this.Id, reason, performedBy, DateTime.UtcNow));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -56,19 +56,19 @@ public class QualityCheck : AggregateRoot<Guid>
         switch (@event)
         {
             case QualityCheckCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                QualityPointId = e.QualityPointId;
-                SourceId = e.SourceId;
-                SourceType = e.SourceType;
-                MaterialId = e.MaterialId;
-                Status = QualityCheckStatus.Pending;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.QualityPointId = e.QualityPointId;
+                this.SourceId = e.SourceId;
+                this.SourceType = e.SourceType;
+                this.MaterialId = e.MaterialId;
+                this.Status = QualityCheckStatus.Pending;
                 break;
             case QualityCheckPassedEvent:
-                Status = QualityCheckStatus.Passed;
+                this.Status = QualityCheckStatus.Passed;
                 break;
             case QualityCheckFailedEvent:
-                Status = QualityCheckStatus.Failed;
+                this.Status = QualityCheckStatus.Failed;
                 break;
         }
     }
@@ -91,7 +91,7 @@ public record QualityCheckCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record QualityCheckPassedEvent(
@@ -101,7 +101,7 @@ public record QualityCheckPassedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record QualityCheckFailedEvent(
@@ -111,5 +111,5 @@ public record QualityCheckFailedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

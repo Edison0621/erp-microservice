@@ -8,7 +8,7 @@ using MediatR;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -47,7 +47,7 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -60,9 +60,9 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Ensure databases created
-using (var scope = app.Services.CreateScope())
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AutomationDbContext>();
+    AutomationDbContext db = scope.ServiceProvider.GetRequiredService<AutomationDbContext>();
     await db.Database.EnsureCreatedAsync();
 }
 
@@ -70,12 +70,10 @@ app.Run();
 
 namespace ErpSystem.Automation.Infrastructure
 {
-    public class AutomationDbContext : DbContext
+    public class AutomationDbContext(DbContextOptions<AutomationDbContext> options) : DbContext(options)
     {
         public DbSet<EventStream> Events { get; set; } = null!;
         public DbSet<AutomationRuleReadModel> Rules { get; set; } = null!;
-
-        public AutomationDbContext(DbContextOptions<AutomationDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -97,20 +95,15 @@ namespace ErpSystem.Automation.Infrastructure
         public bool IsActive { get; set; }
     }
 
-    public class AutomationRuleRepository : IAutomationRuleRepository
+    public class AutomationRuleRepository(AutomationDbContext context, IEventStore eventStore) : IAutomationRuleRepository
     {
-        private readonly AutomationDbContext _context;
-        private readonly IEventStore _eventStore;
-        public AutomationRuleRepository(AutomationDbContext context, IEventStore eventStore) 
-        {
-             _context = context;
-             _eventStore = eventStore;
-        }
+        private readonly AutomationDbContext _context = context;
+        private readonly IEventStore _eventStore = eventStore;
 
         public async Task<List<AutomationRule>> GetActiveRulesByEventType(string eventType)
         {
-            // In a real system, we'd query the read model then load aggregates
-            return new List<AutomationRule>();
+            //TODO In a real system, we'd query the read model then load aggregates
+            return [];
         }
     }
 

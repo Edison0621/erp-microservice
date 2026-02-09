@@ -2,7 +2,6 @@ using MediatR;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.HR.Domain;
-using ErpSystem.HR.Infrastructure;
 
 namespace ErpSystem.HR.Application;
 
@@ -44,77 +43,68 @@ public record TerminateEmployeeCommand(
     string Note
 ) : IRequest<bool>;
 
-public class EmployeeCommandHandler : 
+public class EmployeeCommandHandler(EventStoreRepository<Employee> repo, IEventBus eventBus) :
     IRequestHandler<HireEmployeeCommand, Guid>,
     IRequestHandler<TransferEmployeeCommand, bool>,
     IRequestHandler<PromoteEmployeeCommand, bool>,
     IRequestHandler<TerminateEmployeeCommand, bool>
 {
-    private readonly EventStoreRepository<Employee> _repo;
-    private readonly IEventBus _eventBus;
-
-    public EmployeeCommandHandler(EventStoreRepository<Employee> repo, IEventBus eventBus)
-    {
-        _repo = repo;
-        _eventBus = eventBus;
-    }
-
     public async Task<Guid> Handle(HireEmployeeCommand request, CancellationToken ct)
     {
-        var id = Guid.NewGuid();
-        var empNumber = $"EMP-{DateTime.UtcNow:yyyyMMdd}-{id.ToString()[..4]}";
-        var emp = Employee.Hire(
+        Guid id = Guid.NewGuid();
+        string empNumber = $"EMP-{DateTime.UtcNow:yyyyMMdd}-{id.ToString()[..4]}";
+        Employee emp = Employee.Hire(
             id, empNumber, request.FullName, request.Gender, request.DateOfBirth, 
             request.IdType, request.IdNumber, request.HireDate, request.EmploymentType, 
             request.CompanyId, request.DepartmentId, request.PositionId, 
             request.ManagerEmployeeId, request.CostCenterId);
             
-        await _repo.SaveAsync(emp);
+        await repo.SaveAsync(emp);
 
         // Publish Integration Event for Identity Account Creation
-        await _eventBus.PublishAsync(new HRIntegrationEvents.EmployeeHiredIntegrationEvent(
+        await eventBus.PublishAsync(new HrIntegrationEvents.EmployeeHiredIntegrationEvent(
             emp.Id,
             emp.EmployeeNumber,
             emp.FullName,
             emp.DepartmentId,
             emp.PositionId,
             request.Email
-        ));
+        ), ct);
 
         return id;
     }
 
     public async Task<bool> Handle(TransferEmployeeCommand request, CancellationToken ct)
     {
-        var emp = await _repo.LoadAsync(request.EmployeeId);
+        Employee? emp = await repo.LoadAsync(request.EmployeeId);
         if (emp == null) throw new KeyNotFoundException("Employee not found");
         emp.Transfer(request.ToDepartmentId, request.ToPositionId, request.EffectiveDate, request.Reason);
-        await _repo.SaveAsync(emp);
+        await repo.SaveAsync(emp);
         return true;
     }
 
     public async Task<bool> Handle(PromoteEmployeeCommand request, CancellationToken ct)
     {
-        var emp = await _repo.LoadAsync(request.EmployeeId);
+        Employee? emp = await repo.LoadAsync(request.EmployeeId);
         if (emp == null) throw new KeyNotFoundException("Employee not found");
         emp.Promote(request.ToPositionId, request.EffectiveDate, request.Reason);
-        await _repo.SaveAsync(emp);
+        await repo.SaveAsync(emp);
         return true;
     }
 
     public async Task<bool> Handle(TerminateEmployeeCommand request, CancellationToken ct)
     {
-        var emp = await _repo.LoadAsync(request.EmployeeId);
+        Employee? emp = await repo.LoadAsync(request.EmployeeId);
         if (emp == null) throw new KeyNotFoundException("Employee not found");
         emp.Terminate(request.TerminationDate, request.Reason, request.Note);
-        await _repo.SaveAsync(emp);
+        await repo.SaveAsync(emp);
 
         // Publish Integration Event for Account Disabling
-        await _eventBus.PublishAsync(new HRIntegrationEvents.EmployeeTerminatedIntegrationEvent(
+        await eventBus.PublishAsync(new HrIntegrationEvents.EmployeeTerminatedIntegrationEvent(
             emp.Id,
             emp.EmployeeNumber,
             emp.FullName
-        ));
+        ), ct);
 
         return true;
     }

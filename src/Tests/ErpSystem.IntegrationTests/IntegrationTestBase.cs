@@ -2,65 +2,55 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using ErpSystem.Procurement.Infrastructure;
-using ErpSystem.Procurement.Domain;
 using ErpSystem.Inventory.Infrastructure;
-using ErpSystem.Inventory.Domain;
 using ErpSystem.Sales.Infrastructure;
-using ErpSystem.Sales.Domain;
 using ErpSystem.Production.Infrastructure;
-using ErpSystem.Production.Domain;
 using ErpSystem.HR.Infrastructure;
-using ErpSystem.HR.Domain;
 using ErpSystem.Identity.Infrastructure;
-using ErpSystem.Identity.Domain;
 using ErpSystem.Finance.Infrastructure;
-using ErpSystem.Finance.Domain;
-using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using Moq;
 using Dapr.Client;
-using MediatR;
 using System.Net.Http.Json;
 
 namespace ErpSystem.IntegrationTests;
 
 public class IntegrationTestBase
 {
-    protected WebApplicationFactory<ErpSystem.HR.Program> CreateHRApp(IEventBus mockEventBus)
+    protected WebApplicationFactory<HR.Program> CreateHRApp(IEventBus mockEventBus)
     {
-        return new WebApplicationFactory<ErpSystem.HR.Program>()
+        return new WebApplicationFactory<HR.Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
                 builder.ConfigureServices(services =>
                 {
-                    var dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
-                    foreach (var d in dbDescriptors) services.Remove(d);
+                    List<ServiceDescriptor> dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
+                    foreach (ServiceDescriptor d in dbDescriptors) services.Remove(d);
 
-                    services.AddDbContext<HREventStoreDbContext>(o => o.UseInMemoryDatabase("TestHRES"));
-                    services.AddDbContext<HRReadDbContext>(o => o.UseInMemoryDatabase("TestHRRead"));
+                    services.AddDbContext<HrEventStoreDbContext>(o => o.UseInMemoryDatabase("TestHRES"));
+                    services.AddDbContext<HrReadDbContext>(o => o.UseInMemoryDatabase("TestHRRead"));
 
                     services.AddSingleton(new Mock<DaprClient>().Object);
 
-                    var busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
+                    ServiceDescriptor? busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
                     if (busDescriptor != null) services.Remove(busDescriptor);
                     services.AddSingleton(mockEventBus);
                 });
             });
     }
 
-    protected WebApplicationFactory<ErpSystem.Identity.Program> CreateIdentityApp()
+    protected WebApplicationFactory<Identity.Program> CreateIdentityApp()
     {
-        return new WebApplicationFactory<ErpSystem.Identity.Program>()
+        return new WebApplicationFactory<Identity.Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
                 builder.ConfigureServices(services =>
                 {
-                    var dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
-                    foreach (var d in dbDescriptors) services.Remove(d);
+                    List<ServiceDescriptor> dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
+                    foreach (ServiceDescriptor d in dbDescriptors) services.Remove(d);
 
                     services.AddDbContext<EventStoreDbContext>(o => o.UseInMemoryDatabase("TestIdentES"));
                     services.AddDbContext<IdentityReadDbContext>(o => o.UseInMemoryDatabase("TestIdentRead"));
@@ -70,63 +60,63 @@ public class IntegrationTestBase
             });
     }
 
-    protected WebApplicationFactory<ErpSystem.Production.Program> CreateProductionApp(IEventBus mockEventBus)
+    protected WebApplicationFactory<Production.Program> CreateProductionApp(IEventBus mockEventBus)
     {
-        return new WebApplicationFactory<ErpSystem.Production.Program>()
+        return new WebApplicationFactory<Production.Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
                 builder.ConfigureServices(services =>
                 {
-                    var dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
-                    foreach(var d in dbDescriptors) services.Remove(d);
+                    List<ServiceDescriptor> dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
+                    foreach(ServiceDescriptor d in dbDescriptors) services.Remove(d);
                     
                     services.AddDbContext<ProductionEventStoreDbContext>(o => o.UseInMemoryDatabase("TestPrdES"));
                     services.AddDbContext<ProductionReadDbContext>(o => o.UseInMemoryDatabase("TestPrdRead"));
 
                     services.AddSingleton(new Mock<DaprClient>().Object);
 
-                    var busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
+                    ServiceDescriptor? busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
                     if (busDescriptor != null) services.Remove(busDescriptor);
                     services.AddSingleton(mockEventBus);
                 });
             });
     }
 
-    protected WebApplicationFactory<ErpSystem.Sales.Program> CreateSalesApp(IEventBus mockEventBus)
+    protected WebApplicationFactory<Sales.Program> CreateSalesApp(IEventBus mockEventBus)
     {
-        return new WebApplicationFactory<ErpSystem.Sales.Program>()
+        return new WebApplicationFactory<Sales.Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
                 builder.ConfigureServices(services =>
                 {
-                    var dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
-                    foreach(var d in dbDescriptors) services.Remove(d);
+                    List<ServiceDescriptor> dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
+                    foreach(ServiceDescriptor d in dbDescriptors) services.Remove(d);
                     
                     services.AddDbContext<SalesEventStoreDbContext>(o => o.UseInMemoryDatabase("TestSalesES"));
                     services.AddDbContext<SalesReadDbContext>(o => o.UseInMemoryDatabase("TestSalesRead"));
 
                     services.AddSingleton(new Mock<DaprClient>().Object);
 
-                    var busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
+                    ServiceDescriptor? busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
                     if (busDescriptor != null) services.Remove(busDescriptor);
                     services.AddSingleton(mockEventBus);
                 });
             });
     }
 
-    protected WebApplicationFactory<ErpSystem.Procurement.Program> CreateProcurementApp(IEventBus mockEventBus)
+    protected WebApplicationFactory<Procurement.Program> CreateProcurementApp(IEventBus mockEventBus)
     {
-        return new WebApplicationFactory<ErpSystem.Procurement.Program>()
+        return new WebApplicationFactory<Procurement.Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
                 builder.ConfigureServices(services =>
                 {
                     // Kill DbContexts to prevent connection attempts
-                    var dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
-                    foreach(var d in dbDescriptors) services.Remove(d);
+                    List<ServiceDescriptor> dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
+                    foreach(ServiceDescriptor d in dbDescriptors) services.Remove(d);
                     
                     services.AddDbContext<ProcurementEventStoreDbContext>(o => o.UseInMemoryDatabase("TestPOES"));
                     services.AddDbContext<ProcurementReadDbContext>(o => o.UseInMemoryDatabase("TestPORead"));
@@ -135,23 +125,23 @@ public class IntegrationTestBase
                     services.AddSingleton(new Mock<DaprClient>().Object);
 
                     // Replace real EventBus
-                    var busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
+                    ServiceDescriptor? busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
                     if (busDescriptor != null) services.Remove(busDescriptor);
                     services.AddSingleton(mockEventBus);
                 });
             });
     }
 
-    protected WebApplicationFactory<ErpSystem.Inventory.Program> CreateInventoryApp()
+    protected WebApplicationFactory<Inventory.Program> CreateInventoryApp()
     {
-        return new WebApplicationFactory<ErpSystem.Inventory.Program>()
+        return new WebApplicationFactory<Inventory.Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.UseEnvironment("Testing");
                 builder.ConfigureServices(services =>
                 {
-                    var dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
-                    foreach(var d in dbDescriptors) services.Remove(d);
+                    List<ServiceDescriptor> dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
+                    foreach(ServiceDescriptor d in dbDescriptors) services.Remove(d);
                     
                     services.AddDbContext<InventoryEventStoreDbContext>(o => o.UseInMemoryDatabase("TestInvES"));
                     services.AddDbContext<InventoryReadDbContext>(o => o.UseInMemoryDatabase("TestInvRead"));
@@ -170,15 +160,15 @@ public class IntegrationTestBase
                 builder.UseEnvironment("Testing");
                 builder.ConfigureServices(services =>
                 {
-                    var dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
-                    foreach(var d in dbDescriptors) services.Remove(d);
+                    List<ServiceDescriptor> dbDescriptors = services.Where(d => d.ServiceType.Name.Contains("DbContext")).ToList();
+                    foreach(ServiceDescriptor d in dbDescriptors) services.Remove(d);
                     
                     services.AddDbContext<FinanceEventStoreDbContext>(o => o.UseInMemoryDatabase("TestFinES"));
                     services.AddDbContext<FinanceReadDbContext>(o => o.UseInMemoryDatabase("TestFinRead"));
 
                     services.AddSingleton(new Mock<DaprClient>().Object);
 
-                    var busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
+                    ServiceDescriptor? busDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEventBus));
                     if (busDescriptor != null) services.Remove(busDescriptor);
                     services.AddSingleton(mockEventBus);
                 });
@@ -186,20 +176,11 @@ public class IntegrationTestBase
     }
 }
 
-public class TestEventBus : IEventBus
+public class TestEventBus(HttpClient targetClient, string endpoint) : IEventBus
 {
-    private readonly HttpClient _targetClient;
-    private readonly string _endpoint;
-
-    public TestEventBus(HttpClient targetClient, string endpoint)
-    {
-        _targetClient = targetClient;
-        _endpoint = endpoint;
-    }
-
     public async Task PublishAsync<T>(T @event, CancellationToken cancellationToken = default) where T : class
     {
-        if (_targetClient == null) return;
-        await _targetClient.PostAsJsonAsync(_endpoint, @event, cancellationToken);
+        if (targetClient == null) return;
+        await targetClient.PostAsJsonAsync(endpoint, @event, cancellationToken);
     }
 }

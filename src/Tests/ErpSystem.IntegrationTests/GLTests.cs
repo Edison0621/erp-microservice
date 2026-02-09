@@ -1,11 +1,8 @@
-using Xunit;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using ErpSystem.Finance.Application;
 using ErpSystem.Finance.Domain;
 using MediatR;
-using ErpSystem.Finance.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.IntegrationTests;
 
@@ -19,38 +16,37 @@ public class GLTests : IntegrationTestBase
         try 
         {
             // 1. Setup App
-            financeApp = CreateFinanceApp(new TestEventBus(null, ""));
-            var mediator = financeApp.Services.GetRequiredService<IMediator>();
+            financeApp = this.CreateFinanceApp(new TestEventBus(null, ""));
+            IMediator mediator = financeApp.Services.GetRequiredService<IMediator>();
 
             // 2. Define Accounts
-            var cashAccountId = await mediator.Send(new DefineAccountCommand(
+            Guid cashAccountId = await mediator.Send(new DefineAccountCommand(
                 "1001", "Cash", AccountType.Asset, AccountClass.Current, null, BalanceType.Debit, "USD"));
             
-            var equityAccountId = await mediator.Send(new DefineAccountCommand(
+            Guid equityAccountId = await mediator.Send(new DefineAccountCommand(
                 "3001", "Owner Equity", AccountType.Equity, AccountClass.NonCurrent, null, BalanceType.Credit, "USD"));
 
             // 3. Define & Open Period
-            var periodId = await mediator.Send(new DefineFinancialPeriodCommand(2026, 1, new DateTime(2026, 1, 1), new DateTime(2026, 1, 31)));
+            Guid periodId = await mediator.Send(new DefineFinancialPeriodCommand(2026, 1, new DateTime(2026, 1, 1), new DateTime(2026, 1, 31)));
             // Period is open by default upon definition in our simplified logic? 
             // Checking Domain logic: "Define" sets IsClosed=false. So yes, open.
 
             // 4. Create Journal Entry (Draft)
-            var jeId = await mediator.Send(new CreateJournalEntryCommand(
+            Guid jeId = await mediator.Send(new CreateJournalEntryCommand(
                 "JE-001", 
                 DateTime.UtcNow, 
                 DateTime.UtcNow, 
                 "Initial Investment", 
                 JournalEntrySource.Manual, 
                 null,
-                new List<JournalEntryLineDto>
-                {
+                [
                     new JournalEntryLineDto(cashAccountId, "Invest Cash", 1000m, 0),
                     new JournalEntryLineDto(equityAccountId, "Owner Capital", 0, 1000m)
-                }
+                ]
             ));
 
             // Verify Draft Status
-            var jeDetail = await mediator.Send(new GetJournalEntryQuery(jeId));
+            JournalEntryDetailDto? jeDetail = await mediator.Send(new GetJournalEntryQuery(jeId));
             Assert.NotNull(jeDetail);
             Assert.Equal((int)JournalEntryStatus.Draft, jeDetail.Header.Status);
 
@@ -64,7 +60,7 @@ public class GLTests : IntegrationTestBase
             Assert.Equal((int)JournalEntryStatus.Posted, jeDetail.Header.Status);
 
             // 6. Check Trial Balance
-            var tb = await mediator.Send(new GetTrialBalanceQuery(DateTime.UtcNow));
+            List<TrialBalanceLineDto> tb = await mediator.Send(new GetTrialBalanceQuery(DateTime.UtcNow));
             
             Assert.Collection(tb.OrderBy(x => x.AccountCode), 
                 c => {

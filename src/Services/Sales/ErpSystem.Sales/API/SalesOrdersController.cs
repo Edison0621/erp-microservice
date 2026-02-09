@@ -6,43 +6,39 @@ namespace ErpSystem.Sales.API;
 
 [ApiController]
 [Route("api/v1/sales/orders")]
-public class SalesOrdersController : ControllerBase
+public class SalesOrdersController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public SalesOrdersController(IMediator mediator) => _mediator = mediator;
-
     [HttpPost]
-    public async Task<IActionResult> Create(CreateSOCommand command) => Ok(await _mediator.Send(command));
+    public async Task<IActionResult> Create(CreateSoCommand command) => this.Ok(await mediator.Send(command));
 
     [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(Guid id) => Ok(await _mediator.Send(new GetSOByIdQuery(id)));
+    public async Task<IActionResult> GetById(Guid id) => this.Ok(await mediator.Send(new GetSoByIdQuery(id)));
 
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] string? customerId, [FromQuery] string? status, [FromQuery] int page = 1)
-        => Ok(await _mediator.Send(new SearchSOsQuery(customerId, status, page)));
+        =>
+            this.Ok(await mediator.Send(new SearchSOsQuery(customerId, status, page)));
 
     [HttpPost("{id}/confirm")]
     public async Task<IActionResult> Confirm(Guid id, [FromQuery] string warehouseId)
-        => Ok(await _mediator.Send(new ConfirmSOCommand(id, warehouseId)));
+        =>
+            this.Ok(await mediator.Send(new ConfirmSoCommand(id, warehouseId)));
 
     [HttpPost("{id}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, [FromBody] string reason)
-        => Ok(await _mediator.Send(new CancelSOCommand(id, reason)));
+        =>
+            this.Ok(await mediator.Send(new CancelSoCommand(id, reason)));
 
     [HttpGet("{id}/billable-lines")]
     public async Task<IActionResult> GetBillableLines(Guid id)
-        => Ok(await _mediator.Send(new GetBillableLinesQuery(id)));
+        =>
+            this.Ok(await mediator.Send(new GetBillableLinesQuery(id)));
 }
 
 [ApiController]
 [Route("api/v1/sales/shipments")]
-public class ShipmentsController : ControllerBase
+public class ShipmentsController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public ShipmentsController(IMediator mediator) => _mediator = mediator;
-
     [HttpPost]
-    public async Task<IActionResult> Create(CreateShipmentCommand command) => Ok(await _mediator.Send(command));
+    public async Task<IActionResult> Create(CreateShipmentCommand command) => this.Ok(await mediator.Send(command));
 }

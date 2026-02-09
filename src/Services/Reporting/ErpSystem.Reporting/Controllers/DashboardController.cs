@@ -5,23 +5,16 @@ namespace ErpSystem.Reporting.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class DashboardController : ControllerBase
+public class DashboardController(IDashboardService dashboardService) : ControllerBase
 {
-    private readonly IDashboardService _dashboardService;
-
-    public DashboardController(IDashboardService dashboardService)
-    {
-        _dashboardService = dashboardService;
-    }
-
     /// <summary>
     /// Get KPI summary for executive dashboard
     /// </summary>
     [HttpGet("summary")]
     public async Task<ActionResult<DashboardSummary>> GetSummary()
     {
-        var summary = await _dashboardService.GetSummaryAsync();
-        return Ok(summary);
+        DashboardSummary summary = await dashboardService.GetSummaryAsync();
+        return this.Ok(summary);
     }
 
     /// <summary>
@@ -30,8 +23,8 @@ public class DashboardController : ControllerBase
     [HttpGet("sales-trend")]
     public async Task<ActionResult<IEnumerable<TrendDataPoint>>> GetSalesTrend([FromQuery] int days = 30)
     {
-        var trend = await _dashboardService.GetSalesTrendAsync(days);
-        return Ok(trend);
+        IEnumerable<TrendDataPoint> trend = await dashboardService.GetSalesTrendAsync(days);
+        return this.Ok(trend);
     }
 
     /// <summary>
@@ -40,8 +33,8 @@ public class DashboardController : ControllerBase
     [HttpGet("inventory-status")]
     public async Task<ActionResult<IEnumerable<InventoryStatusItem>>> GetInventoryStatus()
     {
-        var status = await _dashboardService.GetInventoryStatusAsync();
-        return Ok(status);
+        IEnumerable<InventoryStatusItem> status = await dashboardService.GetInventoryStatusAsync();
+        return this.Ok(status);
     }
 
     /// <summary>
@@ -50,8 +43,8 @@ public class DashboardController : ControllerBase
     [HttpGet("top-products")]
     public async Task<ActionResult<IEnumerable<TopProductItem>>> GetTopProducts([FromQuery] int count = 10)
     {
-        var products = await _dashboardService.GetTopProductsAsync(count);
-        return Ok(products);
+        IEnumerable<TopProductItem> products = await dashboardService.GetTopProductsAsync(count);
+        return this.Ok(products);
     }
 
     /// <summary>
@@ -60,8 +53,8 @@ public class DashboardController : ControllerBase
     [HttpGet("recent-activities")]
     public async Task<ActionResult<IEnumerable<ActivityItem>>> GetRecentActivities([FromQuery] int count = 20)
     {
-        var activities = await _dashboardService.GetRecentActivitiesAsync(count);
-        return Ok(activities);
+        IEnumerable<ActivityItem> activities = await dashboardService.GetRecentActivitiesAsync(count);
+        return this.Ok(activities);
     }
 }
 

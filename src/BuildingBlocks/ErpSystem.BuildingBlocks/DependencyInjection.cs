@@ -12,7 +12,7 @@ public static class DependencyInjection
     public static IServiceCollection AddBuildingBlocks(this IServiceCollection services, Assembly[] assembliesToScan)
     {
         // 1. Register Validators
-        foreach (var assembly in assembliesToScan)
+        foreach (Assembly assembly in assembliesToScan)
         {
             services.AddValidatorsFromAssembly(assembly);
         }

@@ -11,18 +11,11 @@ public interface IReportService
     Task<ProductionEfficiencyReport> GetProductionEfficiencyAsync(DateTime startDate, DateTime endDate);
 }
 
-public class ReportService : IReportService
+public class ReportService(ILogger<ReportService> logger) : IReportService
 {
-    private readonly ILogger<ReportService> _logger;
-
-    public ReportService(ILogger<ReportService> logger)
-    {
-        _logger = logger;
-    }
-
     public async Task<FinancialSummaryReport> GetFinancialSummaryAsync(DateTime startDate, DateTime endDate)
     {
-        _logger.LogInformation("Generating financial summary report for {Start} to {End}", startDate, endDate);
+        logger.LogInformation("Generating financial summary report for {Start} to {End}", startDate, endDate);
 
         return new FinancialSummaryReport(
             StartDate: startDate,
@@ -42,7 +35,7 @@ public class ReportService : IReportService
 
     public async Task<InventoryValuationReport> GetInventoryValuationAsync()
     {
-        _logger.LogInformation("Generating inventory valuation report");
+        logger.LogInformation("Generating inventory valuation report");
 
         return new InventoryValuationReport(
             AsOfDate: DateTime.UtcNow,
@@ -60,7 +53,7 @@ public class ReportService : IReportService
 
     public async Task<SalesByCustomerReport> GetSalesByCustomerAsync(DateTime startDate, DateTime endDate)
     {
-        _logger.LogInformation("Generating sales by customer report");
+        logger.LogInformation("Generating sales by customer report");
 
         return new SalesByCustomerReport(
             StartDate: startDate,
@@ -78,7 +71,7 @@ public class ReportService : IReportService
 
     public async Task<PurchaseOrderReport> GetPurchaseOrderReportAsync()
     {
-        _logger.LogInformation("Generating purchase order report");
+        logger.LogInformation("Generating purchase order report");
 
         return new PurchaseOrderReport(
             TotalOrders: 156,
@@ -97,7 +90,7 @@ public class ReportService : IReportService
 
     public async Task<ProductionEfficiencyReport> GetProductionEfficiencyAsync(DateTime startDate, DateTime endDate)
     {
-        _logger.LogInformation("Generating production efficiency report");
+        logger.LogInformation("Generating production efficiency report");
 
         return new ProductionEfficiencyReport(
             StartDate: startDate,

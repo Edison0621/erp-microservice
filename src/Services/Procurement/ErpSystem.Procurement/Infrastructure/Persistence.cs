@@ -3,11 +3,9 @@ using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.Procurement.Infrastructure;
 
-public class ProcurementEventStoreDbContext : DbContext
+public class ProcurementEventStoreDbContext(DbContextOptions<ProcurementEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public ProcurementEventStoreDbContext(DbContextOptions<ProcurementEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,13 +17,11 @@ public class ProcurementEventStoreDbContext : DbContext
     }
 }
 
-public class ProcurementReadDbContext : DbContext
+public class ProcurementReadDbContext(DbContextOptions<ProcurementReadDbContext> options) : DbContext(options)
 {
     public DbSet<PurchaseOrderReadModel> PurchaseOrders { get; set; } = null!;
     public DbSet<GoodsReceiptReadModel> GoodsReceipts { get; set; } = null!;
     public DbSet<SupplierPriceHistory> PriceHistory { get; set; } = null!;
-
-    public ProcurementReadDbContext(DbContextOptions<ProcurementReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,7 +33,7 @@ public class ProcurementReadDbContext : DbContext
 public class PurchaseOrderReadModel
 {
     public Guid Id { get; set; }
-    public string PONumber { get; set; } = string.Empty;
+    public string PoNumber { get; set; } = string.Empty;
     public string SupplierId { get; set; } = string.Empty;
     public string SupplierName { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
@@ -50,9 +46,9 @@ public class PurchaseOrderReadModel
 public class GoodsReceiptReadModel
 {
     public Guid Id { get; set; }
-    public string GRNumber { get; set; } = string.Empty;
+    public string GrNumber { get; set; } = string.Empty;
     public Guid PurchaseOrderId { get; set; }
-    public string PONumber { get; set; } = string.Empty;
+    public string PoNumber { get; set; } = string.Empty;
     public DateTime ReceiptDate { get; set; }
     public string ReceivedBy { get; set; } = string.Empty;
     public string Lines { get; set; } = "[]"; // JSONB

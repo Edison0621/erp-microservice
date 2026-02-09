@@ -5,17 +5,9 @@ using ErpSystem.BuildingBlocks.EventBus;
 
 namespace ErpSystem.BuildingBlocks.Outbox;
 
-public class OutboxProcessor : BackgroundService
+public class OutboxProcessor(IServiceScopeFactory scopeFactory, ILogger<OutboxProcessor> logger) : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<OutboxProcessor> _logger;
     private const int BatchSize = 20;
-
-    public OutboxProcessor(IServiceScopeFactory scopeFactory, ILogger<OutboxProcessor> logger)
-    {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -23,11 +15,11 @@ public class OutboxProcessor : BackgroundService
         {
             try
             {
-                await ProcessOutboxBatchAsync(stoppingToken);
+                await this.ProcessOutboxBatchAsync(stoppingToken);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing outbox messages");
+                logger.LogError(ex, "Error processing outbox messages");
             }
 
             await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
@@ -36,11 +28,11 @@ public class OutboxProcessor : BackgroundService
 
     private async Task ProcessOutboxBatchAsync(CancellationToken stoppingToken)
     {
-        using var scope = _scopeFactory.CreateScope();
+        using IServiceScope scope = scopeFactory.CreateScope();
         
         // Services/Infrastructure MUST register IOutboxRepository
-        var repository = scope.ServiceProvider.GetService<IOutboxRepository>();
-        var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+        IOutboxRepository? repository = scope.ServiceProvider.GetService<IOutboxRepository>();
+        IEventBus eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
 
         if (repository == null)
         {
@@ -50,27 +42,27 @@ public class OutboxProcessor : BackgroundService
             return;
         }
 
-        var messages = await repository.GetUnprocessedAsync(BatchSize, stoppingToken);
+        IReadOnlyList<OutboxMessage> messages = await repository.GetUnprocessedAsync(BatchSize, stoppingToken);
 
-        foreach (var message in messages)
+        foreach (OutboxMessage message in messages)
         {
             try
             {
-                var payload = message.DeserializePayload();
+                object? payload = message.DeserializePayload();
 
                 if (payload != null)
                 {
-                    await eventBus.PublishAsync(payload);
+                    await eventBus.PublishAsync(payload, stoppingToken);
                 }
 
                 message.MarkAsProcessed();
                 await repository.UpdateAsync(message, stoppingToken);
-                
-                _logger.LogInformation("Processed outbox message {MessageId}", message.Id);
+
+                logger.LogInformation("Processed outbox message {MessageId}", message.Id);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process outbox message {MessageId}", message.Id);
+                logger.LogError(ex, "Failed to process outbox message {MessageId}", message.Id);
                 message.MarkAsFailed(ex.Message);
                 await repository.UpdateAsync(message, stoppingToken);
             }

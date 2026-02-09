@@ -1,7 +1,5 @@
-using Xunit;
 using FluentAssertions;
 using ErpSystem.Mrp.Domain;
-using ErpSystem.Mrp.Application;
 
 namespace ErpSystem.IntegrationTests.Mrp;
 
@@ -14,8 +12,8 @@ public class MrpCalculationTests
     public void ReorderingRule_ShouldCalculateCorrectQuantities()
     {
         // Arrange
-        var ruleId = Guid.NewGuid();
-        var rule = ReorderingRule.Create(
+        Guid ruleId = Guid.NewGuid();
+        ReorderingRule rule = ReorderingRule.Create(
             ruleId,
             "tenant1",
             "MAT-001",
@@ -37,7 +35,7 @@ public class MrpCalculationTests
     public void ReorderingRule_ShouldEnforceBusinessRules()
     {
         // Arrange & Act & Assert - Min cannot be negative
-        var act1 = () => ReorderingRule.Create(
+        Func<ReorderingRule> act1 = () => ReorderingRule.Create(
             Guid.NewGuid(),
             "tenant1",
             "MAT-002",
@@ -51,7 +49,7 @@ public class MrpCalculationTests
             .WithMessage("*cannot be negative*");
 
         // Max must be greater than min
-        var act2 = () => ReorderingRule.Create(
+        Func<ReorderingRule> act2 = () => ReorderingRule.Create(
             Guid.NewGuid(),
             "tenant1",
             "MAT-003",
@@ -69,7 +67,7 @@ public class MrpCalculationTests
     public void ProcurementSuggestion_ShouldTrackApprovalWorkflow()
     {
         // Arrange
-        var calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new ProcurementCalculation(
             CurrentOnHand: 50m,
             Reserved: 20m,
             Available: 30m,
@@ -80,8 +78,8 @@ public class MrpCalculationTests
             MaxQuantity: 500m,
             Reason: "Below minimum stock");
 
-        var suggestionId = Guid.NewGuid();
-        var suggestion = ProcurementSuggestion.Create(
+        Guid suggestionId = Guid.NewGuid();
+        ProcurementSuggestion suggestion = ProcurementSuggestion.Create(
             suggestionId,
             "tenant1",
             "MAT-001",
@@ -109,7 +107,7 @@ public class MrpCalculationTests
     public void ProcurementSuggestion_ShouldEnforceWorkflowRules()
     {
         // Arrange
-        var calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new ProcurementCalculation(
             CurrentOnHand: 50m,
             Reserved: 20m,
             Available: 30m,
@@ -120,7 +118,7 @@ public class MrpCalculationTests
             MaxQuantity: 500m,
             Reason: "Below minimum stock");
 
-        var suggestion = ProcurementSuggestion.Create(
+        ProcurementSuggestion suggestion = ProcurementSuggestion.Create(
             Guid.NewGuid(),
             "tenant1",
             "MAT-002",
@@ -131,7 +129,7 @@ public class MrpCalculationTests
             calculation);
 
         // Act & Assert - Cannot convert without approval
-        var act = () => suggestion.MarkAsConverted("PO-001");
+        Action act = () => suggestion.MarkAsConverted("PO-001");
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*approved*");
 
@@ -149,7 +147,7 @@ public class MrpCalculationTests
         // Scenario: Current stock is 30, min is 100, max is 500
         // Expected: Should suggest reordering 470 units (to reach max)
         
-        var calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new ProcurementCalculation(
             CurrentOnHand: 50m,
             Reserved: 20m,
             Available: 30m,
@@ -161,12 +159,12 @@ public class MrpCalculationTests
             Reason: "Forecasted available (30) below minimum (100)");
 
         // Suggested quantity should be: max - forecasted = 500 - 30 = 470
-        var expectedSuggestion = 470m;
+        decimal expectedSuggestion = 470m;
         
         calculation.ForecastedAvailable.Should().Be(30m);
         calculation.ForecastedAvailable.Should().BeLessThan(calculation.MinQuantity);
         
-        var suggestedQty = calculation.MaxQuantity - calculation.ForecastedAvailable;
+        decimal suggestedQty = calculation.MaxQuantity - calculation.ForecastedAvailable;
         suggestedQty.Should().Be(expectedSuggestion);
     }
 
@@ -177,7 +175,7 @@ public class MrpCalculationTests
         // Forecasted = 30 + 80 = 110, which is above min (100)
         // Expected: No reordering needed
         
-        var calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new ProcurementCalculation(
             CurrentOnHand: 50m,
             Reserved: 20m,
             Available: 30m,

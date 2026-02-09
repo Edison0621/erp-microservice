@@ -2,9 +2,7 @@ using MediatR;
 
 namespace ErpSystem.BuildingBlocks.CQRS;
 
-/// <summary>
-/// CQRS Abstractions - Command Query Responsibility Segregation base types.
-/// </summary>
+// CQRS Abstractions - Command Query Responsibility Segregation base types.
 
 /// <summary>
 /// Base interface for all commands (write operations)

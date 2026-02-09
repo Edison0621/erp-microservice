@@ -1,6 +1,6 @@
 using ErpSystem.Reporting.Application;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services
 builder.Services.AddControllers();
@@ -17,7 +17,7 @@ builder.Services.AddHealthChecks();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Configure pipeline
 if (app.Environment.IsDevelopment())

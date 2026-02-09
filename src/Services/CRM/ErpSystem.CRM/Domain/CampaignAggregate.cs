@@ -155,33 +155,33 @@ public class Campaign : AggregateRoot<Guid>
     public int ConvertedLeads { get; private set; }
     public decimal TotalRevenue { get; private set; }
     
-    public List<CampaignLead> Leads { get; private set; } = new();
-    public List<CampaignExpense> Expenses { get; private set; } = new();
+    public List<CampaignLead> Leads { get; private set; } = [];
+    public List<CampaignExpense> Expenses { get; private set; } = [];
 
     /// <summary>
     /// Total expenses for the campaign
     /// </summary>
-    public decimal TotalExpenses => Expenses.Sum(e => e.Amount);
+    public decimal TotalExpenses => this.Expenses.Sum(e => e.Amount);
 
     /// <summary>
     /// Budget utilization percentage
     /// </summary>
-    public decimal BudgetUtilization => Budget > 0 ? TotalExpenses / Budget * 100 : 0;
+    public decimal BudgetUtilization => this.Budget > 0 ? this.TotalExpenses / this.Budget * 100 : 0;
 
     /// <summary>
     /// Return on Investment (ROI)
     /// </summary>
-    public decimal ROI => TotalExpenses > 0 ? (TotalRevenue - TotalExpenses) / TotalExpenses * 100 : 0;
+    public decimal Roi => this.TotalExpenses > 0 ? (this.TotalRevenue - this.TotalExpenses) / this.TotalExpenses * 100 : 0;
 
     /// <summary>
     /// Cost per Lead
     /// </summary>
-    public decimal CostPerLead => TotalLeads > 0 ? TotalExpenses / TotalLeads : 0;
+    public decimal CostPerLead => this.TotalLeads > 0 ? this.TotalExpenses / this.TotalLeads : 0;
 
     /// <summary>
     /// Conversion Rate
     /// </summary>
-    public decimal ConversionRate => TotalLeads > 0 ? (decimal)ConvertedLeads / TotalLeads * 100 : 0;
+    public decimal ConversionRate => this.TotalLeads > 0 ? (decimal)this.ConvertedLeads / this.TotalLeads * 100 : 0;
 
     public static Campaign Create(
         Guid id,
@@ -199,7 +199,7 @@ public class Campaign : AggregateRoot<Guid>
         if (endDate <= startDate)
             throw new ArgumentException("End date must be after start date");
 
-        var campaign = new Campaign();
+        Campaign campaign = new Campaign();
         campaign.ApplyChange(new CampaignCreatedEvent(
             id, campaignNumber, name, type, startDate, endDate,
             budget, currency, targetAudience, description, createdByUserId));
@@ -208,86 +208,86 @@ public class Campaign : AggregateRoot<Guid>
 
     public void Start()
     {
-        if (Status != CampaignStatus.Draft && Status != CampaignStatus.Scheduled)
+        if (this.Status != CampaignStatus.Draft && this.Status != CampaignStatus.Scheduled)
             throw new InvalidOperationException("Only draft or scheduled campaigns can be started");
 
-        ApplyChange(new CampaignStatusChangedEvent(Id, Status, CampaignStatus.Active));
+        this.ApplyChange(new CampaignStatusChangedEvent(this.Id, this.Status, CampaignStatus.Active));
     }
 
     public void Pause()
     {
-        if (Status != CampaignStatus.Active)
+        if (this.Status != CampaignStatus.Active)
             throw new InvalidOperationException("Only active campaigns can be paused");
 
-        ApplyChange(new CampaignStatusChangedEvent(Id, Status, CampaignStatus.Paused));
+        this.ApplyChange(new CampaignStatusChangedEvent(this.Id, this.Status, CampaignStatus.Paused));
     }
 
     public void Resume()
     {
-        if (Status != CampaignStatus.Paused)
+        if (this.Status != CampaignStatus.Paused)
             throw new InvalidOperationException("Only paused campaigns can be resumed");
 
-        ApplyChange(new CampaignStatusChangedEvent(Id, Status, CampaignStatus.Active));
+        this.ApplyChange(new CampaignStatusChangedEvent(this.Id, this.Status, CampaignStatus.Active));
     }
 
     public void Complete()
     {
-        if (Status != CampaignStatus.Active && Status != CampaignStatus.Paused)
+        if (this.Status != CampaignStatus.Active && this.Status != CampaignStatus.Paused)
             throw new InvalidOperationException("Only active or paused campaigns can be completed");
 
-        ApplyChange(new CampaignStatusChangedEvent(Id, Status, CampaignStatus.Completed));
+        this.ApplyChange(new CampaignStatusChangedEvent(this.Id, this.Status, CampaignStatus.Completed));
     }
 
     public void Cancel()
     {
-        if (Status == CampaignStatus.Completed || Status == CampaignStatus.Cancelled)
+        if (this.Status == CampaignStatus.Completed || this.Status == CampaignStatus.Cancelled)
             throw new InvalidOperationException("Cannot cancel a completed or already cancelled campaign");
 
-        ApplyChange(new CampaignStatusChangedEvent(Id, Status, CampaignStatus.Cancelled));
+        this.ApplyChange(new CampaignStatusChangedEvent(this.Id, this.Status, CampaignStatus.Cancelled));
     }
 
     public void Schedule()
     {
-        if (Status != CampaignStatus.Draft)
+        if (this.Status != CampaignStatus.Draft)
             throw new InvalidOperationException("Only draft campaigns can be scheduled");
 
-        ApplyChange(new CampaignStatusChangedEvent(Id, Status, CampaignStatus.Scheduled));
+        this.ApplyChange(new CampaignStatusChangedEvent(this.Id, this.Status, CampaignStatus.Scheduled));
     }
 
     public void UpdateBudget(decimal newBudget, string? reason = null)
     {
-        if (Status == CampaignStatus.Completed || Status == CampaignStatus.Cancelled)
+        if (this.Status == CampaignStatus.Completed || this.Status == CampaignStatus.Cancelled)
             throw new InvalidOperationException("Cannot update budget of a completed or cancelled campaign");
 
         if (newBudget < 0)
             throw new ArgumentException("Budget cannot be negative");
 
-        ApplyChange(new CampaignBudgetUpdatedEvent(Id, Budget, newBudget, reason));
+        this.ApplyChange(new CampaignBudgetUpdatedEvent(this.Id, this.Budget, newBudget, reason));
     }
 
     public void AssociateLead(Guid leadId, string leadNumber)
     {
-        if (Leads.Any(l => l.LeadId == leadId))
+        if (this.Leads.Any(l => l.LeadId == leadId))
             throw new InvalidOperationException("Lead is already associated with this campaign");
 
-        ApplyChange(new LeadAssociatedToCampaignEvent(Id, leadId, leadNumber, DateTime.UtcNow));
+        this.ApplyChange(new LeadAssociatedToCampaignEvent(this.Id, leadId, leadNumber, DateTime.UtcNow));
     }
 
     public void RecordExpense(string description, decimal amount, DateTime expenseDate, string recordedByUserId)
     {
-        if (Status == CampaignStatus.Completed || Status == CampaignStatus.Cancelled)
+        if (this.Status == CampaignStatus.Completed || this.Status == CampaignStatus.Cancelled)
             throw new InvalidOperationException("Cannot record expense for a completed or cancelled campaign");
 
         if (amount <= 0)
             throw new ArgumentException("Expense amount must be positive");
 
-        var expenseId = Guid.NewGuid();
-        ApplyChange(new CampaignExpenseRecordedEvent(Id, expenseId, description, amount, expenseDate, recordedByUserId));
+        Guid expenseId = Guid.NewGuid();
+        this.ApplyChange(new CampaignExpenseRecordedEvent(this.Id, expenseId, description, amount, expenseDate, recordedByUserId));
     }
 
     public void UpdateMetrics(int totalLeads, int convertedLeads, decimal totalRevenue)
     {
-        ApplyChange(new CampaignMetricsUpdatedEvent(Id, totalLeads, convertedLeads, totalRevenue));
+        this.ApplyChange(new CampaignMetricsUpdatedEvent(this.Id, totalLeads, convertedLeads, totalRevenue));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -295,42 +295,42 @@ public class Campaign : AggregateRoot<Guid>
         switch (@event)
         {
             case CampaignCreatedEvent e:
-                Id = e.CampaignId;
-                CampaignNumber = e.CampaignNumber;
-                Name = e.Name;
-                Type = e.Type;
-                Status = CampaignStatus.Draft;
-                StartDate = e.StartDate;
-                EndDate = e.EndDate;
-                Budget = e.Budget;
-                Currency = e.Currency;
-                TargetAudience = e.TargetAudience;
-                Description = e.Description;
-                CreatedByUserId = e.CreatedByUserId;
+                this.Id = e.CampaignId;
+                this.CampaignNumber = e.CampaignNumber;
+                this.Name = e.Name;
+                this.Type = e.Type;
+                this.Status = CampaignStatus.Draft;
+                this.StartDate = e.StartDate;
+                this.EndDate = e.EndDate;
+                this.Budget = e.Budget;
+                this.Currency = e.Currency;
+                this.TargetAudience = e.TargetAudience;
+                this.Description = e.Description;
+                this.CreatedByUserId = e.CreatedByUserId;
                 break;
 
             case CampaignStatusChangedEvent e:
-                Status = e.NewStatus;
+                this.Status = e.NewStatus;
                 break;
 
             case CampaignBudgetUpdatedEvent e:
-                Budget = e.NewBudget;
+                this.Budget = e.NewBudget;
                 break;
 
             case LeadAssociatedToCampaignEvent e:
-                Leads.Add(new CampaignLead(e.LeadId, e.LeadNumber, e.AssociatedAt));
-                TotalLeads = Leads.Count;
+                this.Leads.Add(new CampaignLead(e.LeadId, e.LeadNumber, e.AssociatedAt));
+                this.TotalLeads = this.Leads.Count;
                 break;
 
             case CampaignExpenseRecordedEvent e:
-                Expenses.Add(new CampaignExpense(
+                this.Expenses.Add(new CampaignExpense(
                     e.ExpenseId, e.Description, e.Amount, e.ExpenseDate, e.RecordedByUserId));
                 break;
 
             case CampaignMetricsUpdatedEvent e:
-                TotalLeads = e.TotalLeads;
-                ConvertedLeads = e.ConvertedLeads;
-                TotalRevenue = e.TotalRevenue;
+                this.TotalLeads = e.TotalLeads;
+                this.ConvertedLeads = e.ConvertedLeads;
+                this.TotalRevenue = e.TotalRevenue;
                 break;
         }
     }

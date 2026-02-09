@@ -3,27 +3,38 @@ using ErpSystem.MasterData.Infrastructure;
 
 namespace ErpSystem.MasterData.Application;
 
-public class BOMQueries
+/// <summary>
+/// Class BOMQueries.
+/// </summary>
+/// <param name="context">The context.</param>
+public class BomQueries(MasterDataReadDbContext context)
 {
-    private readonly MasterDataReadDbContext _context;
-
-    public BOMQueries(MasterDataReadDbContext context)
+    /// <summary>
+    /// Gets all bo ms.
+    /// </summary>
+    /// <returns>List{BOMReadModel}.</returns>
+    public async Task<List<BomReadModel>> GetAllBoMs()
     {
-        _context = context;
+        return await context.BoMs.ToListAsync();
     }
 
-    public async Task<List<BOMReadModel>> GetAllBOMs()
+    /// <summary>
+    /// Gets the bom by identifier.
+    /// </summary>
+    /// <param name="id">The identifier.</param>
+    /// <returns>System.Nullable{BOMReadModel}.</returns>
+    public async Task<BomReadModel?> GetBomById(Guid id)
     {
-        return await _context.BOMs.ToListAsync();
+        return await context.BoMs.FindAsync(id);
     }
 
-    public async Task<BOMReadModel?> GetBOMById(Guid id)
+    /// <summary>
+    /// Gets the bo ms by parent material.
+    /// </summary>
+    /// <param name="parentMaterialId">The parent material identifier.</param>
+    /// <returns>List{BOMReadModel}.</returns>
+    public async Task<List<BomReadModel>> GetBoMsByParentMaterial(Guid parentMaterialId)
     {
-        return await _context.BOMs.FindAsync(id);
-    }
-
-    public async Task<List<BOMReadModel>> GetBOMsByParentMaterial(Guid parentMaterialId)
-    {
-        return await _context.BOMs.Where(b => b.ParentMaterialId == parentMaterialId).ToListAsync();
+        return await context.BoMs.Where(b => b.ParentMaterialId == parentMaterialId).ToListAsync();
     }
 }

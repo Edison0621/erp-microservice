@@ -1,4 +1,3 @@
-using System.Text.Json.Serialization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using MediatR;
@@ -6,7 +5,7 @@ using ErpSystem.BuildingBlocks.EventBus;
 
 namespace ErpSystem.BuildingBlocks.Domain;
 
-public interface IDomainEvent : MediatR.INotification
+public interface IDomainEvent : INotification
 {
     Guid EventId { get; }
     DateTime OccurredOn { get; }
@@ -17,26 +16,26 @@ public abstract class AggregateRoot<TId>
     public TId Id { get; protected set; } = default!;
     public long Version { get; private set; } = -1;
 
-    private readonly List<IDomainEvent> _changes = new();
+    private readonly List<IDomainEvent> _changes = [];
 
-    public IReadOnlyCollection<IDomainEvent> GetChanges() => _changes.AsReadOnly();
+    public IReadOnlyCollection<IDomainEvent> GetChanges() => this._changes.AsReadOnly();
 
-    public void ClearChanges() => _changes.Clear();
+    public void ClearChanges() => this._changes.Clear();
 
     protected void ApplyChange(IDomainEvent @event)
     {
-        Apply(@event);
-        _changes.Add(@event);
+        this.Apply(@event);
+        this._changes.Add(@event);
     }
 
     protected abstract void Apply(IDomainEvent @event);
 
     public void LoadFromHistory(IEnumerable<IDomainEvent> history)
     {
-        foreach (var e in history)
+        foreach (IDomainEvent e in history)
         {
-            Apply(e);
-            Version++;
+            this.Apply(e);
+            this.Version++;
         }
     }
 }
@@ -57,33 +56,21 @@ public interface IEventStore
     Task<TAggregate?> LoadAggregateAsync<TAggregate>(Guid id) where TAggregate : AggregateRoot<Guid>, new();
 }
 
-public class EventStore : IEventStore
+public class EventStore(DbContext context, IPublisher publisher, IEventBus eventBus, Func<string, Type> eventTypeResolver)
+    : IEventStore
 {
-    private readonly DbContext _context;
-    private readonly IPublisher _publisher;
-    private readonly IEventBus _eventBus;
-    private readonly Func<string, Type> _eventTypeResolver;
-
-    public EventStore(DbContext context, IPublisher publisher, IEventBus eventBus, Func<string, Type> eventTypeResolver)
-    {
-        _context = context;
-        _publisher = publisher;
-        _eventBus = eventBus;
-        _eventTypeResolver = eventTypeResolver;
-    }
-
     public async Task SaveAggregateAsync<TAggregate>(TAggregate aggregate) where TAggregate : AggregateRoot<Guid>, new()
     {
-        var changes = aggregate.GetChanges();
+        IReadOnlyCollection<IDomainEvent> changes = aggregate.GetChanges();
         if (!changes.Any()) return;
 
-        var version = aggregate.Version;
-        var eventsToPublish = new List<IDomainEvent>();
+        long version = aggregate.Version;
+        List<IDomainEvent> eventsToPublish = [];
 
-        foreach (var @event in changes)
+        foreach (IDomainEvent @event in changes)
         {
             version++;
-            var stream = new EventStream
+            EventStream stream = new EventStream
             {
                 AggregateId = aggregate.Id,
                 AggregateType = typeof(TAggregate).Name,
@@ -92,19 +79,20 @@ public class EventStore : IEventStore
                 Payload = JsonSerializer.Serialize(@event, @event.GetType()),
                 OccurredOn = @event.OccurredOn
             };
-            _context.Set<EventStream>().Add(stream);
+            context.Set<EventStream>().Add(stream);
             eventsToPublish.Add(@event);
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
-        foreach (var evt in eventsToPublish)
+        foreach (IDomainEvent evt in eventsToPublish)
         {
             if (evt is INotification notification)
             {
-                await _publisher.Publish(notification);
+                await publisher.Publish(notification);
             }
-            await _eventBus.PublishAsync(evt);
+
+            await eventBus.PublishAsync(evt);
         }
 
         aggregate.ClearChanges();
@@ -112,17 +100,17 @@ public class EventStore : IEventStore
 
     public async Task<TAggregate?> LoadAggregateAsync<TAggregate>(Guid id) where TAggregate : AggregateRoot<Guid>, new()
     {
-        var streams = await _context.Set<EventStream>()
+        List<EventStream> streams = await context.Set<EventStream>()
             .Where(e => e.AggregateId == id)
             .OrderBy(e => e.Version)
             .ToListAsync();
 
         if (!streams.Any()) return null;
 
-        var aggregate = new TAggregate();
-        var history = streams.Select(s =>
+        TAggregate aggregate = new TAggregate();
+        IEnumerable<IDomainEvent> history = streams.Select(s =>
         {
-            var type = _eventTypeResolver(s.EventType);
+            Type type = eventTypeResolver(s.EventType);
             return (IDomainEvent)JsonSerializer.Deserialize(s.Payload, type!)!;
         });
 
@@ -131,22 +119,18 @@ public class EventStore : IEventStore
     }
 }
 
-public class EventStoreRepository<TAggregate> : IEventStore where TAggregate : AggregateRoot<Guid>, new()
+public class EventStoreRepository<TAggregate>(IEventStore eventStore) : IEventStore
+    where TAggregate : AggregateRoot<Guid>, new()
 {
-    private readonly IEventStore _eventStore;
-
-    public EventStoreRepository(IEventStore eventStore)
-    {
-        _eventStore = eventStore;
-    }
-
-    public Task SaveAsync(TAggregate aggregate) => _eventStore.SaveAggregateAsync(aggregate);
-    public Task<TAggregate?> LoadAsync(Guid id) => _eventStore.LoadAggregateAsync<TAggregate>(id);
+    public Task SaveAsync(TAggregate aggregate) => eventStore.SaveAggregateAsync(aggregate);
+    public Task<TAggregate?> LoadAsync(Guid id) => eventStore.LoadAggregateAsync<TAggregate>(id);
 
     // Implementation of IEventStore
     public Task SaveAggregateAsync<T>(T aggregate) where T : AggregateRoot<Guid>, new()
-        => _eventStore.SaveAggregateAsync(aggregate);
+        =>
+            eventStore.SaveAggregateAsync(aggregate);
 
     public Task<T?> LoadAggregateAsync<T>(Guid id) where T : AggregateRoot<Guid>, new()
-        => _eventStore.LoadAggregateAsync<T>(id);
+        =>
+            eventStore.LoadAggregateAsync<T>(id);
 }

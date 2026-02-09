@@ -11,59 +11,52 @@ namespace ErpSystem.BuildingBlocks.Behaviors;
 /// Idempotency Behavior - Prevents duplicate command execution in distributed systems.
 /// Uses distributed cache to track processed request IDs.
 /// </summary>
-public class IdempotencyBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+public class IdempotencyBehavior<TRequest, TResponse>(IDistributedCache cache, ILogger<IdempotencyBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
-    private readonly IDistributedCache _cache;
-    private readonly ILogger<IdempotencyBehavior<TRequest, TResponse>> _logger;
-    private static readonly TimeSpan DefaultExpiration = TimeSpan.FromHours(24);
-
-    public IdempotencyBehavior(IDistributedCache cache, ILogger<IdempotencyBehavior<TRequest, TResponse>> logger)
-    {
-        _cache = cache;
-        _logger = logger;
-    }
+    // ReSharper disable once StaticMemberInGenericType
+    private static readonly TimeSpan _defaultExpiration = TimeSpan.FromHours(24);
 
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         // Check if request implements IIdempotentRequest
         if (request is not IIdempotentRequest idempotentRequest)
         {
-            return await next();
+            return await next(cancellationToken);
         }
 
-        var idempotencyKey = GenerateIdempotencyKey(idempotentRequest);
-        var cachedResponse = await _cache.GetStringAsync(idempotencyKey, cancellationToken);
+        string idempotencyKey = GenerateIdempotencyKey(idempotentRequest);
+        string? cachedResponse = await cache.GetStringAsync(idempotencyKey, cancellationToken);
 
         if (cachedResponse is not null)
         {
-            _logger.LogWarning("Duplicate request detected. IdempotencyKey: {Key}", idempotencyKey);
+            logger.LogWarning("Duplicate request detected. IdempotencyKey: {Key}", idempotencyKey);
             return JsonSerializer.Deserialize<TResponse>(cachedResponse)!;
         }
 
-        var response = await next();
+        TResponse response = await next(cancellationToken);
 
         // Cache the response
-        var serializedResponse = JsonSerializer.Serialize(response);
-        await _cache.SetStringAsync(
+        string serializedResponse = JsonSerializer.Serialize(response);
+        await cache.SetStringAsync(
             idempotencyKey,
             serializedResponse,
-            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = DefaultExpiration },
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = _defaultExpiration },
             cancellationToken);
 
-        _logger.LogDebug("Request processed and cached. IdempotencyKey: {Key}", idempotencyKey);
+        logger.LogDebug("Request processed and cached. IdempotencyKey: {Key}", idempotencyKey);
 
         return response;
     }
 
     private static string GenerateIdempotencyKey(IIdempotentRequest request)
     {
-        var requestType = request.GetType().FullName;
-        var requestId = request.IdempotencyKey;
-        var combined = $"{requestType}:{requestId}";
+        string? requestType = request.GetType().FullName;
+        string requestId = request.IdempotencyKey;
+        string combined = $"{requestType}:{requestId}";
         
-        using var sha256 = SHA256.Create();
-        var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(combined));
+        using SHA256 sha256 = SHA256.Create();
+        byte[] hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(combined));
         return $"idempotency:{Convert.ToBase64String(hash)}";
     }
 }

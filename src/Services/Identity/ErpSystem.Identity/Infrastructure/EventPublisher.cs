@@ -2,22 +2,15 @@ using MediatR;
 
 namespace ErpSystem.Identity.Infrastructure;
 
-public class EventPublisher
+public class EventPublisher(IPublisher publisher)
 {
-    private readonly IPublisher _publisher;
-
-    public EventPublisher(IPublisher publisher)
-    {
-        _publisher = publisher;
-    }
-
     public async Task PublishAsync(IEnumerable<object> events)
     {
-        foreach (var @event in events)
+        foreach (object @event in events)
         {
             if (@event is INotification notification)
             {
-                await _publisher.Publish(notification);
+                await publisher.Publish(notification);
             }
         }
     }

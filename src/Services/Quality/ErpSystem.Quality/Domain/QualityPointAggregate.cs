@@ -25,7 +25,7 @@ public class QualityPoint : AggregateRoot<Guid>
         string instructions,
         bool isMandatory)
     {
-        var qp = new QualityPoint();
+        QualityPoint qp = new QualityPoint();
         qp.ApplyChange(new QualityPointCreatedEvent(
             id,
             tenantId,
@@ -44,14 +44,14 @@ public class QualityPoint : AggregateRoot<Guid>
         switch (@event)
         {
             case QualityPointCreatedEvent e:
-                Id = e.AggregateId;
-                Name = e.Name;
-                MaterialId = e.MaterialId;
-                OperationType = e.OperationType;
-                CheckType = e.CheckType;
-                Instructions = e.Instructions;
-                IsMandatory = e.IsMandatory;
-                IsActive = true;
+                this.Id = e.AggregateId;
+                this.Name = e.Name;
+                this.MaterialId = e.MaterialId;
+                this.OperationType = e.OperationType;
+                this.CheckType = e.CheckType;
+                this.Instructions = e.Instructions;
+                this.IsMandatory = e.IsMandatory;
+                this.IsActive = true;
                 break;
         }
     }
@@ -76,5 +76,5 @@ public record QualityPointCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

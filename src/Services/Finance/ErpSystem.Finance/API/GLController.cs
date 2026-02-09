@@ -1,40 +1,33 @@
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using ErpSystem.Finance.Application;
-using ErpSystem.Finance.Domain;
+using ErpSystem.Finance.Infrastructure;
 
 namespace ErpSystem.Finance.API;
 
 [ApiController]
 [Route("api/gl")]
-public class GLController : ControllerBase
+public class GlController(IMediator mediator) : ControllerBase
 {
-    private readonly IMediator _mediator;
-
-    public GLController(IMediator mediator)
-    {
-        _mediator = mediator;
-    }
-
     [HttpPost("accounts")]
     public async Task<IActionResult> CreateAccount([FromBody] DefineAccountCommand command)
     {
-        var id = await _mediator.Send(command);
-        return CreatedAtAction(nameof(GetAccounts), new { id }, id);
+        Guid id = await mediator.Send(command);
+        return this.CreatedAtAction(nameof(this.GetAccounts), new { id }, id);
     }
 
     [HttpGet("accounts")]
     public async Task<IActionResult> GetAccounts()
     {
-        var result = await _mediator.Send(new GetChartOfAccountsQuery());
-        return Ok(result);
+        List<AccountReadModel> result = await mediator.Send(new GetChartOfAccountsQuery());
+        return this.Ok(result);
     }
 
     [HttpPost("journal-entries")]
     public async Task<IActionResult> CreateJournalEntry([FromBody] CreateJournalEntryCommand command)
     {
-        var id = await _mediator.Send(command);
-        return Ok(new { JournalEntryId = id }); // Return OK for draft creation
+        Guid id = await mediator.Send(command);
+        return this.Ok(new { JournalEntryId = id }); // Return OK for draft creation
     }
 
     [HttpPost("journal-entries/{id}/post")]
@@ -42,41 +35,41 @@ public class GLController : ControllerBase
     {
         try
         {
-            await _mediator.Send(new PostJournalEntryCommand(id));
-            return Ok();
+            await mediator.Send(new PostJournalEntryCommand(id));
+            return this.Ok();
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ex.Message);
+            return this.BadRequest(ex.Message);
         }
     }
 
     [HttpGet("journal-entries/{id}")]
     public async Task<IActionResult> GetJournalEntry(Guid id)
     {
-        var result = await _mediator.Send(new GetJournalEntryQuery(id));
-        if (result == null) return NotFound();
-        return Ok(result);
+        JournalEntryDetailDto? result = await mediator.Send(new GetJournalEntryQuery(id));
+        if (result == null) return this.NotFound();
+        return this.Ok(result);
     }
 
     [HttpGet("reports/trial-balance")]
     public async Task<IActionResult> GetTrialBalance([FromQuery] DateTime? asOfDate)
     {
-        var result = await _mediator.Send(new GetTrialBalanceQuery(asOfDate));
-        return Ok(result);
+        List<TrialBalanceLineDto> result = await mediator.Send(new GetTrialBalanceQuery(asOfDate));
+        return this.Ok(result);
     }
 
     [HttpPost("periods")]
     public async Task<IActionResult> DefinePeriod([FromBody] DefineFinancialPeriodCommand command)
     {
-        var id = await _mediator.Send(command);
-        return Ok(new { PeriodId = id });
+        Guid id = await mediator.Send(command);
+        return this.Ok(new { PeriodId = id });
     }
 
     [HttpPost("periods/{id}/close")]
     public async Task<IActionResult> ClosePeriod(Guid id)
     {
-        await _mediator.Send(new CloseFinancialPeriodCommand(id));
-        return Ok();
+        await mediator.Send(new CloseFinancialPeriodCommand(id));
+        return this.Ok();
     }
 }

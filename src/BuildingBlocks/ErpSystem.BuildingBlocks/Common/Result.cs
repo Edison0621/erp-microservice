@@ -5,29 +5,28 @@ public record Error(string Code, string Name)
     public static readonly Error None = new(string.Empty, string.Empty);
     public static readonly Error NullValue = new("Error.NullValue", "The specified result value is null.");
 
-    public override string ToString() => Code;
+    public override string ToString() => this.Code;
 }
 
 public class Result
 {
     protected Result(bool isSuccess, Error error)
     {
-        if (isSuccess && error != Error.None)
+        switch (isSuccess)
         {
-            throw new InvalidOperationException();
+            case true when error != Error.None:
+                throw new InvalidOperationException();
+            case false when error == Error.None:
+                throw new InvalidOperationException();
+            default:
+                this.IsSuccess = isSuccess;
+                this.Error = error;
+                break;
         }
-
-        if (!isSuccess && error == Error.None)
-        {
-            throw new InvalidOperationException();
-        }
-
-        IsSuccess = isSuccess;
-        Error = error;
     }
 
     public bool IsSuccess { get; }
-    public bool IsFailure => !IsSuccess;
+    public bool IsFailure => !this.IsSuccess;
     public Error Error { get; }
 
     public static Result Success() => new(true, Error.None);
@@ -44,11 +43,12 @@ public class Result<TValue> : Result
     protected internal Result(TValue? value, bool isSuccess, Error error)
         : base(isSuccess, error)
     {
-        _value = value;
+        this._value = value;
     }
 
-    public TValue Value => IsSuccess
-        ? _value!
+    public TValue Value =>
+        this.IsSuccess
+        ? this._value!
         : throw new InvalidOperationException("The value of a failure result can not be accessed.");
 
     public static implicit operator Result<TValue>(TValue? value) => Create(value);

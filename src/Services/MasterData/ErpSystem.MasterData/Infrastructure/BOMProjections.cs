@@ -1,57 +1,49 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using ErpSystem.MasterData.Domain;
 using System.Text.Json;
 
 namespace ErpSystem.MasterData.Infrastructure;
 
-public class BOMProjections : 
-    INotificationHandler<BOMCreatedEvent>,
-    INotificationHandler<BOMComponentAddedEvent>,
-    INotificationHandler<BOMStatusChangedEvent>
+public class BomProjections(MasterDataReadDbContext context) :
+    INotificationHandler<BomCreatedEvent>,
+    INotificationHandler<BomComponentAddedEvent>,
+    INotificationHandler<BomStatusChangedEvent>
 {
-    private readonly MasterDataReadDbContext _context;
-
-    public BOMProjections(MasterDataReadDbContext context)
+    public async Task Handle(BomCreatedEvent e, CancellationToken ct)
     {
-        _context = context;
-    }
-
-    public async Task Handle(BOMCreatedEvent e, CancellationToken ct)
-    {
-        var model = new BOMReadModel
+        BomReadModel model = new BomReadModel
         {
-            BOMId = e.BOMId,
+            BomId = e.BomId,
             ParentMaterialId = e.ParentMaterialId,
-            BOMName = e.BOMName,
+            BomName = e.BomName,
             Version = e.Version,
             EffectiveDate = e.EffectiveDate,
-            Status = BOMStatus.Draft.ToString(),
+            Status = nameof(BomStatus.Draft),
             Components = "[]"
         };
-        _context.BOMs.Add(model);
-        await _context.SaveChangesAsync(ct);
+        context.BoMs.Add(model);
+        await context.SaveChangesAsync(ct);
     }
 
-    public async Task Handle(BOMComponentAddedEvent e, CancellationToken ct)
+    public async Task Handle(BomComponentAddedEvent e, CancellationToken ct)
     {
-        var model = await _context.BOMs.FindAsync(new object[] { e.BOMId }, ct);
+        BomReadModel? model = await context.BoMs.FindAsync([e.BomId], ct);
         if (model != null)
         {
-            var components = JsonSerializer.Deserialize<List<BOMComponent>>(model.Components) ?? new();
-            components.Add(new BOMComponent(e.MaterialId, e.Quantity, e.Note));
+            List<BomComponent> components = JsonSerializer.Deserialize<List<BomComponent>>(model.Components) ?? [];
+            components.Add(new BomComponent(e.MaterialId, e.Quantity, e.Note));
             model.Components = JsonSerializer.Serialize(components);
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
         }
     }
 
-    public async Task Handle(BOMStatusChangedEvent e, CancellationToken ct)
+    public async Task Handle(BomStatusChangedEvent e, CancellationToken ct)
     {
-        var model = await _context.BOMs.FindAsync(new object[] { e.BOMId }, ct);
+        BomReadModel? model = await context.BoMs.FindAsync([e.BomId], ct);
         if (model != null)
         {
             model.Status = e.Status.ToString();
-            await _context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync(ct);
         }
     }
 }

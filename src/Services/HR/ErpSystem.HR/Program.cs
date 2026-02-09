@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using ErpSystem.HR.Domain;
 using ErpSystem.HR.Infrastructure;
 using MediatR;
 
@@ -11,15 +10,12 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
-
-        // Add service defaults
-        
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Persistence
-        builder.Services.AddDbContext<HREventStoreDbContext>(options =>
+        builder.Services.AddDbContext<HrEventStoreDbContext>(options =>
             options.UseNpgsql(builder.Configuration.GetConnectionString("hrdb")));
-        builder.Services.AddDbContext<HRReadDbContext>(options =>
+        builder.Services.AddDbContext<HrReadDbContext>(options =>
             options.UseNpgsql(builder.Configuration.GetConnectionString("hrdb")));
 
         // Dapr
@@ -37,7 +33,7 @@ public class Program
         // Register the main EventStore
         builder.Services.AddScoped<IEventStore>(sp => 
             new EventStore(
-                sp.GetRequiredService<HREventStoreDbContext>(),
+                sp.GetRequiredService<HrEventStoreDbContext>(),
                 sp.GetRequiredService<IPublisher>(),
                 sp.GetRequiredService<IEventBus>(),
                 name => Type.GetType($"ErpSystem.HR.Domain.{name}, ErpSystem.HR")!));
@@ -49,20 +45,16 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
-        var app = builder.Build();
-
-        
+        WebApplication app = builder.Build();
 
         // Ensure databases created
         if (!app.Environment.IsEnvironment("Testing"))
         {
-            using (var scope = app.Services.CreateScope())
-            {
-                var es = scope.ServiceProvider.GetRequiredService<HREventStoreDbContext>();
-                await es.Database.EnsureCreatedAsync();
-                var rs = scope.ServiceProvider.GetRequiredService<HRReadDbContext>();
-                await rs.Database.EnsureCreatedAsync();
-            }
+            using IServiceScope scope = app.Services.CreateScope();
+            HrEventStoreDbContext es = scope.ServiceProvider.GetRequiredService<HrEventStoreDbContext>();
+            await es.Database.EnsureCreatedAsync();
+            HrReadDbContext rs = scope.ServiceProvider.GetRequiredService<HrReadDbContext>();
+            await rs.Database.EnsureCreatedAsync();
         }
 
         if (app.Environment.IsDevelopment())

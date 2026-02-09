@@ -8,22 +8,17 @@ namespace ErpSystem.Analytics.Infrastructure;
 /// </summary>
 public class DemandForecastEngine
 {
-    private readonly MLContext _mlContext;
-
-    public DemandForecastEngine()
-    {
-        _mlContext = new MLContext();
-    }
+    private readonly MLContext _mlContext = new();
 
     public ForecastResult PredictDemand(IEnumerable<TimeSeriesData> history, int horizon)
     {
         if (!history.Any()) return new ForecastResult(0, 0);
 
         // Load data into ML.NET
-        IDataView dataView = _mlContext.Data.LoadFromEnumerable(history);
+        IDataView dataView = this._mlContext.Data.LoadFromEnumerable(history);
 
         // Setup forecasting pipeline (Singular Spectrum Analysis)
-        var forecastingPipeline = _mlContext.Forecasting.ForecastBySsa(
+        SsaForecastingEstimator? forecastingPipeline = this._mlContext.Forecasting.ForecastBySsa(
             outputColumnName: "Forecast",
             inputColumnName: nameof(TimeSeriesData.Value),
             windowSize: Math.Min(history.Count() / 2, 7), // Weekly seasonality check
@@ -35,13 +30,13 @@ public class DemandForecastEngine
             confidenceUpperBoundColumn: "UpperBound");
 
         // Train model
-        var trainedModel = forecastingPipeline.Fit(dataView);
+        SsaForecastingTransformer? trainedModel = forecastingPipeline.Fit(dataView);
 
         // Create prediction engine
-        var forecastingEngine = trainedModel.CreateTimeSeriesEngine<TimeSeriesData, TimeSeriesForecast>(_mlContext);
+        TimeSeriesPredictionEngine<TimeSeriesData, TimeSeriesForecast>? forecastingEngine = trainedModel.CreateTimeSeriesEngine<TimeSeriesData, TimeSeriesForecast>(this._mlContext);
 
         // Predict
-        var forecast = forecastingEngine.Predict();
+        TimeSeriesForecast? forecast = forecastingEngine.Predict();
 
         return new ForecastResult(
             (decimal)forecast.Forecast[0],

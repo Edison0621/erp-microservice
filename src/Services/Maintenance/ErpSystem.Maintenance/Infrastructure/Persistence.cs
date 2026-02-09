@@ -3,11 +3,9 @@ using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.Maintenance.Infrastructure;
 
-public class MaintenanceEventStoreDbContext : DbContext
+public class MaintenanceEventStoreDbContext(DbContextOptions<MaintenanceEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public MaintenanceEventStoreDbContext(DbContextOptions<MaintenanceEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,10 +17,8 @@ public class MaintenanceEventStoreDbContext : DbContext
     }
 }
 
-public class MaintenanceReadDbContext : DbContext
+public class MaintenanceReadDbContext(DbContextOptions<MaintenanceReadDbContext> options) : DbContext(options)
 {
-    public MaintenanceReadDbContext(DbContextOptions<MaintenanceReadDbContext> options) : base(options) { }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Add read model mappings here

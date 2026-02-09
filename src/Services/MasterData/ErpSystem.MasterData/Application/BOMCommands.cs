@@ -1,54 +1,48 @@
 using MediatR;
 using ErpSystem.MasterData.Domain;
-using ErpSystem.MasterData.Infrastructure;
 using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.MasterData.Application;
 
 // --- BOM Commands ---
 
-public record CreateBOMRequest(
+public record CreateBomRequest(
     Guid ParentMaterialId, 
     string Name, 
     string Version, 
     DateTime EffectiveDate);
 
-public record AddBOMComponentCommand(
-    Guid BOMId, 
+public record AddBomComponentCommand(
+    Guid BomId, 
     Guid MaterialId, 
     decimal Quantity, 
     string? Note) : IRequest;
 
-public record ActivateBOMCommand(Guid BOMId) : IRequest;
+public record ActivateBomCommand(Guid BomId) : IRequest;
 
-// --- Handlers ---
-
-public class BOMCommandHandler : 
-    IRequestHandler<AddBOMComponentCommand>,
-    IRequestHandler<ActivateBOMCommand>
+/// <summary>
+/// Class BOMCommandHandler.
+/// </summary>
+/// <param name="bomRepo">The bom repo.</param>
+public class BomCommandHandler(EventStoreRepository<BillOfMaterials> bomRepo) :
+    IRequestHandler<AddBomComponentCommand>,
+    IRequestHandler<ActivateBomCommand>
 {
-    private readonly EventStoreRepository<BillOfMaterials> _bomRepo;
-
-    public BOMCommandHandler(EventStoreRepository<BillOfMaterials> bomRepo)
+    public async Task Handle(AddBomComponentCommand r, CancellationToken ct)
     {
-        _bomRepo = bomRepo;
-    }
-
-    public async Task Handle(AddBOMComponentCommand r, CancellationToken ct)
-    {
-        var bom = await _bomRepo.LoadAsync(r.BOMId);
-        if (bom == null) throw new KeyNotFoundException($"BOM with ID {r.BOMId} not found.");
+        BillOfMaterials? bom = await bomRepo.LoadAsync(r.BomId);
+        if (bom == null) throw new KeyNotFoundException($"BOM with ID {r.BomId} not found.");
 
         bom.AddComponent(r.MaterialId, r.Quantity, r.Note);
-        await _bomRepo.SaveAsync(bom);
+        await bomRepo.SaveAsync(bom);
     }
 
-    public async Task Handle(ActivateBOMCommand r, CancellationToken ct)
+    public async Task Handle(ActivateBomCommand r, CancellationToken ct)
     {
-        var bom = await _bomRepo.LoadAsync(r.BOMId);
-        if (bom == null) throw new KeyNotFoundException($"BOM with ID {r.BOMId} not found.");
+        BillOfMaterials? bom = await bomRepo.LoadAsync(r.BomId);
+        if (bom == null) throw new KeyNotFoundException($"BOM with ID {r.BomId} not found.");
 
         bom.Activate();
-        await _bomRepo.SaveAsync(bom);
+        await bomRepo.SaveAsync(bom);
     }
 }

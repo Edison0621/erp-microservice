@@ -8,22 +8,13 @@ namespace ErpSystem.Identity.API.Controllers;
 
 [ApiController]
 [Route("api/v1/identity/departments")]
-public class DepartmentsController : ControllerBase
+public class DepartmentsController(IMediator mediator, IdentityReadDbContext readContext) : ControllerBase
 {
-    private readonly IMediator _mediator;
-    private readonly IdentityReadDbContext _readContext;
-
-    public DepartmentsController(IMediator mediator, IdentityReadDbContext readContext)
-    {
-        _mediator = mediator;
-        _readContext = readContext;
-    }
-
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateDepartmentCommand command)
     {
-        var id = await _mediator.Send(command);
-        return Ok(new { DepartmentId = id });
+        Guid id = await mediator.Send(command);
+        return this.Ok(new { DepartmentId = id });
     }
 
     [HttpGet]
@@ -31,15 +22,15 @@ public class DepartmentsController : ControllerBase
     {
         // For a tree structure, you might want a recursive DTO logic or just return flat list
         // returning flat list for now, Client can reconstruct tree via ParentId
-        var depts = await _readContext.Departments.AsNoTracking().OrderBy(d => d.Order).ToListAsync();
-        return Ok(depts);
+        List<DepartmentReadModel> depts = await readContext.Departments.AsNoTracking().OrderBy(d => d.Order).ToListAsync();
+        return this.Ok(depts);
     }
 
     [HttpPost("{id}/move")]
     public async Task<IActionResult> Move(Guid id, [FromBody] MoveDepartmentCommand command)
     {
-        if (id != command.DepartmentId) return BadRequest("Id mismatch");
-        await _mediator.Send(command);
-        return NoContent();
+        if (id != command.DepartmentId) return this.BadRequest("Id mismatch");
+        await mediator.Send(command);
+        return this.NoContent();
     }
 }

@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using ErpSystem.Inventory.Infrastructure;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using ErpSystem.Inventory.Domain;
 using ErpSystem.Inventory.Domain.Services;
 using MediatR;
 
@@ -12,10 +11,7 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
-
-        // Add service defaults
-        
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Persistence
         builder.Services.AddDbContext<InventoryEventStoreDbContext>(options =>
@@ -42,7 +38,7 @@ public class Program
         builder.Services.AddScoped(typeof(EventStoreRepository<>));
 
         // MediatR
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(ErpSystem.Inventory.Application.ProcurementIntegrationEventHandler).Assembly));
+        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Application.ProcurementIntegrationEventHandler).Assembly));
 
         // Services
         builder.Services.AddScoped<IInventoryForecastService, InventoryForecastService>();
@@ -51,20 +47,16 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
-        var app = builder.Build();
-
-        
+        WebApplication app = builder.Build();
 
         // Ensure databases created (for dev/demo)
         if (!app.Environment.IsEnvironment("Testing"))
         {
-            using (var scope = app.Services.CreateScope())
-            {
-                var es = scope.ServiceProvider.GetRequiredService<InventoryEventStoreDbContext>();
-                await es.Database.EnsureCreatedAsync();
-                var rs = scope.ServiceProvider.GetRequiredService<InventoryReadDbContext>();
-                await rs.Database.EnsureCreatedAsync();
-            }
+            using IServiceScope scope = app.Services.CreateScope();
+            InventoryEventStoreDbContext es = scope.ServiceProvider.GetRequiredService<InventoryEventStoreDbContext>();
+            await es.Database.EnsureCreatedAsync();
+            InventoryReadDbContext rs = scope.ServiceProvider.GetRequiredService<InventoryReadDbContext>();
+            await rs.Database.EnsureCreatedAsync();
         }
 
         if (app.Environment.IsDevelopment())

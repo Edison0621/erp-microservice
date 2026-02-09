@@ -1,4 +1,3 @@
-using Xunit;
 using FluentAssertions;
 using ErpSystem.Finance.Domain;
 
@@ -13,8 +12,8 @@ public class MaterialCostValuationTests
     public void ProcessReceipt_ShouldCalculateCorrectMovingAverage()
     {
         // Arrange
-        var valuationId = Guid.NewGuid();
-        var valuation = MaterialCostValuation.Create(
+        Guid valuationId = Guid.NewGuid();
+        MaterialCostValuation valuation = MaterialCostValuation.Create(
             valuationId,
             "tenant1",
             "MAT001",
@@ -42,8 +41,8 @@ public class MaterialCostValuationTests
     public void ProcessIssue_ShouldUseCurrentAverageCost()
     {
         // Arrange
-        var valuationId = Guid.NewGuid();
-        var valuation = MaterialCostValuation.Create(
+        Guid valuationId = Guid.NewGuid();
+        MaterialCostValuation valuation = MaterialCostValuation.Create(
             valuationId,
             "tenant1",
             "MAT002",
@@ -69,8 +68,8 @@ public class MaterialCostValuationTests
     public void ProcessIssue_ShouldThrowException_WhenInsufficientQuantity()
     {
         // Arrange
-        var valuationId = Guid.NewGuid();
-        var valuation = MaterialCostValuation.Create(
+        Guid valuationId = Guid.NewGuid();
+        MaterialCostValuation valuation = MaterialCostValuation.Create(
             valuationId,
             "tenant1",
             "MAT003",
@@ -80,7 +79,7 @@ public class MaterialCostValuationTests
         valuation.ProcessReceipt("PO-001", "PO_RECEIPT", 10m, 100m, DateTime.UtcNow);
 
         // Act & Assert
-        var act = () => valuation.ProcessIssue("SO-001", "SO_SHIPMENT", 20m, DateTime.UtcNow);
+        Action act = () => valuation.ProcessIssue("SO-001", "SO_SHIPMENT", 20m, DateTime.UtcNow);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Insufficient quantity*");
     }
@@ -89,8 +88,8 @@ public class MaterialCostValuationTests
     public void ComplexScenario_ShouldMaintainCorrectValuation()
     {
         // Arrange
-        var valuationId = Guid.NewGuid();
-        var valuation = MaterialCostValuation.Create(
+        Guid valuationId = Guid.NewGuid();
+        MaterialCostValuation valuation = MaterialCostValuation.Create(
             valuationId,
             "tenant1",
             "MAT004",

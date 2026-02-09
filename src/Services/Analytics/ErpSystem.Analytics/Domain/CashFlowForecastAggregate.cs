@@ -10,7 +10,7 @@ public class CashFlowForecast : AggregateRoot<Guid>
     public DateTime ForecastPeriod { get; private set; }
     public decimal PredictedInflow { get; private set; }
     public decimal PredictedOutflow { get; private set; }
-    public decimal NetPosition => PredictedInflow - PredictedOutflow;
+    public decimal NetPosition => this.PredictedInflow - this.PredictedOutflow;
     public string TenantId { get; private set; } = string.Empty;
 
     public static CashFlowForecast Create(
@@ -20,7 +20,7 @@ public class CashFlowForecast : AggregateRoot<Guid>
         decimal inflow,
         decimal outflow)
     {
-        var forecast = new CashFlowForecast();
+        CashFlowForecast forecast = new CashFlowForecast();
         forecast.ApplyChange(new CashFlowForecastCreatedEvent(
             id,
             tenantId,
@@ -36,11 +36,11 @@ public class CashFlowForecast : AggregateRoot<Guid>
         switch (@event)
         {
             case CashFlowForecastCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                ForecastPeriod = e.ForecastPeriod;
-                PredictedInflow = e.PredictedInflow;
-                PredictedOutflow = e.PredictedOutflow;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.ForecastPeriod = e.ForecastPeriod;
+                this.PredictedInflow = e.PredictedInflow;
+                this.PredictedOutflow = e.PredictedOutflow;
                 break;
         }
     }
@@ -55,5 +55,5 @@ public record CashFlowForecastCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

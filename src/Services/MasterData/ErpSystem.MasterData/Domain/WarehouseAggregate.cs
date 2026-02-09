@@ -23,7 +23,7 @@ public class Warehouse : AggregateRoot<Guid>
 
     public static Warehouse Create(Guid id, string code, string name, string type)
     {
-        var warehouse = new Warehouse();
+        Warehouse warehouse = new Warehouse();
         warehouse.ApplyChange(new WarehouseCreatedEvent(id, code, name, type));
         return warehouse;
     }
@@ -33,10 +33,10 @@ public class Warehouse : AggregateRoot<Guid>
         switch (@event)
         {
             case WarehouseCreatedEvent e:
-                Id = e.WarehouseId;
-                WarehouseCode = e.WarehouseCode;
-                WarehouseName = e.WarehouseName;
-                Type = e.Type;
+                this.Id = e.WarehouseId;
+                this.WarehouseCode = e.WarehouseCode;
+                this.WarehouseName = e.WarehouseName;
+                this.Type = e.Type;
                 break;
         }
     }

@@ -3,11 +3,9 @@ using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.Production.Infrastructure;
 
-public class ProductionEventStoreDbContext : DbContext
+public class ProductionEventStoreDbContext(DbContextOptions<ProductionEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public ProductionEventStoreDbContext(DbContextOptions<ProductionEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,13 +17,11 @@ public class ProductionEventStoreDbContext : DbContext
     }
 }
 
-public class ProductionReadDbContext : DbContext
+public class ProductionReadDbContext(DbContextOptions<ProductionReadDbContext> options) : DbContext(options)
 {
     public DbSet<ProductionOrderReadModel> ProductionOrders { get; set; } = null!;
     public DbSet<ProductionReportReadModel> ProductionReports { get; set; } = null!;
     public DbSet<MaterialConsumptionReadModel> MaterialConsumptions { get; set; } = null!;
-
-    public ProductionReadDbContext(DbContextOptions<ProductionReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

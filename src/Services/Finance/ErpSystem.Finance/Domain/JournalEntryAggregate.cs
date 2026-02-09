@@ -23,7 +23,7 @@ public enum JournalEntrySource
 // --- Value Objects ---
 public record JournalEntryLine(Guid AccountId, string AccountName, string Description, decimal Debit, decimal Credit)
 {
-    public decimal Amount => Debit - Credit; // Net impact
+    public decimal Amount => this.Debit - this.Credit; // Net impact
 }
 
 // --- Events ---
@@ -62,48 +62,48 @@ public class JournalEntry : AggregateRoot<Guid>
     public JournalEntrySource Source { get; private set; }
     public string? ReferenceNo { get; private set; }
 
-    private readonly List<JournalEntryLine> _lines = new();
-    public IReadOnlyCollection<JournalEntryLine> Lines => _lines.AsReadOnly();
+    private readonly List<JournalEntryLine> _lines = [];
+    public IReadOnlyCollection<JournalEntryLine> Lines => this._lines.AsReadOnly();
 
-    public decimal TotalDebit => _lines.Sum(l => l.Debit);
-    public decimal TotalCredit => _lines.Sum(l => l.Credit);
-    public bool IsBalanced => TotalDebit == TotalCredit;
+    public decimal TotalDebit => this._lines.Sum(l => l.Debit);
+    public decimal TotalCredit => this._lines.Sum(l => l.Credit);
+    public bool IsBalanced => this.TotalDebit == this.TotalCredit;
 
     public static JournalEntry Create(Guid id, string docNumber, DateTime transactionDate, DateTime postingDate, string description, JournalEntrySource source, string? referenceNo)
     {
-        var je = new JournalEntry();
+        JournalEntry je = new JournalEntry();
         je.ApplyChange(new JournalEntryCreatedEvent(id, docNumber, transactionDate, postingDate, description, source, referenceNo));
         return je;
     }
 
     public void UpdateLines(List<JournalEntryLine> lines)
     {
-        if (Status != JournalEntryStatus.Draft)
+        if (this.Status != JournalEntryStatus.Draft)
             throw new InvalidOperationException("Cannot update lines of a posted or voided journal entry.");
 
-        ApplyChange(new JournalEntryLinesUpdatedEvent(Id, lines));
+        this.ApplyChange(new JournalEntryLinesUpdatedEvent(this.Id, lines));
     }
 
     public void Post()
     {
-        if (Status != JournalEntryStatus.Draft)
+        if (this.Status != JournalEntryStatus.Draft)
             throw new InvalidOperationException("Journal Entry is already posted or voided.");
         
-        if (!IsBalanced)
-            throw new InvalidOperationException($"Journal Entry is not balanced. Debit: {TotalDebit}, Credit: {TotalCredit}");
+        if (!this.IsBalanced)
+            throw new InvalidOperationException($"Journal Entry is not balanced. Debit: {this.TotalDebit}, Credit: {this.TotalCredit}");
 
-        if (TotalDebit <= 0)
+        if (this.TotalDebit <= 0)
             throw new InvalidOperationException("Journal Entry cannot be empty.");
 
-        ApplyChange(new JournalEntryPostedEvent(Id));
+        this.ApplyChange(new JournalEntryPostedEvent(this.Id));
     }
 
     public void Void(string reason)
     {
-        if (Status != JournalEntryStatus.Posted)
+        if (this.Status != JournalEntryStatus.Posted)
             throw new InvalidOperationException("Only posted entries can be voided.");
 
-        ApplyChange(new JournalEntryVoidedEvent(Id, reason));
+        this.ApplyChange(new JournalEntryVoidedEvent(this.Id, reason));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -111,24 +111,24 @@ public class JournalEntry : AggregateRoot<Guid>
         switch (@event)
         {
             case JournalEntryCreatedEvent e:
-                Id = e.JournalEntryId;
-                DocumentNumber = e.DocumentNumber;
-                TransactionDate = e.TransactionDate;
-                PostingDate = e.PostingDate;
-                Description = e.Description;
-                Source = e.Source;
-                ReferenceNo = e.ReferenceNo;
-                Status = JournalEntryStatus.Draft;
+                this.Id = e.JournalEntryId;
+                this.DocumentNumber = e.DocumentNumber;
+                this.TransactionDate = e.TransactionDate;
+                this.PostingDate = e.PostingDate;
+                this.Description = e.Description;
+                this.Source = e.Source;
+                this.ReferenceNo = e.ReferenceNo;
+                this.Status = JournalEntryStatus.Draft;
                 break;
             case JournalEntryLinesUpdatedEvent e:
-                _lines.Clear();
-                _lines.AddRange(e.Lines);
+                this._lines.Clear();
+                this._lines.AddRange(e.Lines);
                 break;
             case JournalEntryPostedEvent:
-                Status = JournalEntryStatus.Posted;
+                this.Status = JournalEntryStatus.Posted;
                 break;
             case JournalEntryVoidedEvent:
-                Status = JournalEntryStatus.Voided;
+                this.Status = JournalEntryStatus.Voided;
                 break;
         }
     }

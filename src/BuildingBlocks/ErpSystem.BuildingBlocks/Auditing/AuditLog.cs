@@ -62,48 +62,38 @@ public interface IAuditLogRepository
 /// <summary>
 /// Audit Behavior - Automatically records command execution for auditing.
 /// </summary>
-public class AuditBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+public class AuditBehavior<TRequest, TResponse>(
+    IAuditLogRepository auditRepository,
+    IUserContext userContext,
+    ILogger<AuditBehavior<TRequest, TResponse>> logger)
+    : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
-    private readonly IAuditLogRepository _auditRepository;
-    private readonly IUserContext _userContext;
-    private readonly ILogger<AuditBehavior<TRequest, TResponse>> _logger;
-
-    public AuditBehavior(
-        IAuditLogRepository auditRepository,
-        IUserContext userContext,
-        ILogger<AuditBehavior<TRequest, TResponse>> logger)
-    {
-        _auditRepository = auditRepository;
-        _userContext = userContext;
-        _logger = logger;
-    }
-
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         if (request is not IAuditableRequest auditableRequest)
         {
-            return await next();
+            return await next(cancellationToken);
         }
 
-        var response = await next();
+        TResponse response = await next(cancellationToken);
 
         try
         {
-            var auditLog = AuditLog.Create(
+            AuditLog auditLog = AuditLog.Create(
                 entityType: auditableRequest.EntityType,
                 entityId: auditableRequest.EntityId,
                 action: typeof(TRequest).Name,
                 oldValues: null,
                 newValues: request,
-                userId: _userContext.UserId,
-                tenantId: _userContext.TenantId);
+                userId: userContext.UserId,
+                tenantId: userContext.TenantId);
 
-            await _auditRepository.AddAsync(auditLog, cancellationToken);
+            await auditRepository.AddAsync(auditLog, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create audit log for {RequestType}", typeof(TRequest).Name);
+            logger.LogError(ex, "Failed to create audit log for {RequestType}", typeof(TRequest).Name);
         }
 
         return response;

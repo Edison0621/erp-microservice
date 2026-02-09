@@ -3,11 +3,9 @@ using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.Sales.Infrastructure;
 
-public class SalesEventStoreDbContext : DbContext
+public class SalesEventStoreDbContext(DbContextOptions<SalesEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public SalesEventStoreDbContext(DbContextOptions<SalesEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,12 +17,10 @@ public class SalesEventStoreDbContext : DbContext
     }
 }
 
-public class SalesReadDbContext : DbContext
+public class SalesReadDbContext(DbContextOptions<SalesReadDbContext> options) : DbContext(options)
 {
     public DbSet<SalesOrderReadModel> SalesOrders { get; set; } = null!;
     public DbSet<ShipmentReadModel> Shipments { get; set; } = null!;
-
-    public SalesReadDbContext(DbContextOptions<SalesReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,7 +32,7 @@ public class SalesReadDbContext : DbContext
 public class SalesOrderReadModel
 {
     public Guid Id { get; set; }
-    public string SONumber { get; set; } = string.Empty;
+    public string SoNumber { get; set; } = string.Empty;
     public string CustomerId { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
@@ -51,7 +47,7 @@ public class ShipmentReadModel
     public Guid Id { get; set; }
     public string ShipmentNumber { get; set; } = string.Empty;
     public Guid SalesOrderId { get; set; }
-    public string SONumber { get; set; } = string.Empty;
+    public string SoNumber { get; set; } = string.Empty;
     public DateTime ShippedDate { get; set; }
     public string ShippedBy { get; set; } = string.Empty;
     public string WarehouseId { get; set; } = string.Empty;

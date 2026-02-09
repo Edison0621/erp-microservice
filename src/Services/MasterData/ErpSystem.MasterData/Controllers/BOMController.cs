@@ -7,56 +7,47 @@ namespace ErpSystem.MasterData.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class BOMController : ControllerBase
+public class BomController(IMediator mediator, BomQueries queries) : ControllerBase
 {
-    private readonly IMediator _mediator;
-    private readonly BOMQueries _queries;
-
-    public BOMController(IMediator mediator, BOMQueries queries)
-    {
-        _mediator = mediator;
-        _queries = queries;
-    }
-
     [HttpGet]
-    public async Task<ActionResult<List<BOMReadModel>>> Get()
+    public async Task<ActionResult<List<BomReadModel>>> Get()
     {
-        return await _queries.GetAllBOMs();
+        return await queries.GetAllBoMs();
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<BOMReadModel>> Get(Guid id)
+    public async Task<ActionResult<BomReadModel>> Get(Guid id)
     {
-        var bom = await _queries.GetBOMById(id);
-        if (bom == null) return NotFound();
+        BomReadModel? bom = await queries.GetBomById(id);
+        if (bom == null) return this.NotFound();
         return bom;
     }
 
     [HttpGet("material/{materialId}")]
-    public async Task<ActionResult<List<BOMReadModel>>> GetByMaterial(Guid materialId)
+    public async Task<ActionResult<List<BomReadModel>>> GetByMaterial(Guid materialId)
     {
-        return await _queries.GetBOMsByParentMaterial(materialId);
+        return await queries.GetBoMsByParentMaterial(materialId);
     }
 
     [HttpPost]
-    public async Task<ActionResult<Guid>> Create(CreateBOMRequest request)
+    public async Task<ActionResult<Guid>> Create(CreateBomRequest request)
     {
-        var id = await _mediator.Send(new CreateBOMCommand(request));
-        return CreatedAtAction(nameof(Get), new { id }, id);
+        Guid id = await mediator.Send(new CreateBomCommand(request));
+        return this.CreatedAtAction(nameof(Get), new { id }, id);
     }
 
     [HttpPost("{id}/components")]
-    public async Task<ActionResult> AddComponent(Guid id, AddBOMComponentCommand command)
+    public async Task<ActionResult> AddComponent(Guid id, AddBomComponentCommand command)
     {
-        if (id != command.BOMId) return BadRequest();
-        await _mediator.Send(command);
-        return Ok();
+        if (id != command.BomId) return this.BadRequest();
+        await mediator.Send(command);
+        return this.Ok();
     }
 
     [HttpPost("{id}/activate")]
     public async Task<ActionResult> Activate(Guid id)
     {
-        await _mediator.Send(new ActivateBOMCommand(id));
-        return Ok();
+        await mediator.Send(new ActivateBomCommand(id));
+        return this.Ok();
     }
 }

@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.MasterData.Infrastructure;
 
-public class MasterDataReadDbContext : DbContext
+public class MasterDataReadDbContext(DbContextOptions<MasterDataReadDbContext> options) : DbContext(options)
 {
     public DbSet<MaterialReadModel> Materials { get; set; }
     public DbSet<CategoryReadModel> Categories { get; set; }
@@ -10,9 +10,7 @@ public class MasterDataReadDbContext : DbContext
     public DbSet<CustomerReadModel> Customers { get; set; }
     public DbSet<WarehouseReadModel> Warehouses { get; set; }
     public DbSet<LocationReadModel> Locations { get; set; }
-    public DbSet<BOMReadModel> BOMs { get; set; }
-
-    public MasterDataReadDbContext(DbContextOptions<MasterDataReadDbContext> options) : base(options) { }
+    public DbSet<BomReadModel> BoMs { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,9 +38,9 @@ public class MasterDataReadDbContext : DbContext
 
         modelBuilder.Entity<WarehouseReadModel>().HasKey(w => w.WarehouseId);
         modelBuilder.Entity<LocationReadModel>().HasKey(l => l.LocationId);
-        modelBuilder.Entity<BOMReadModel>(b =>
+        modelBuilder.Entity<BomReadModel>(b =>
         {
-            b.HasKey(bom => bom.BOMId);
+            b.HasKey(bom => bom.BomId);
             b.Property(bom => bom.Components).HasColumnType("jsonb");
         });
     }
@@ -114,11 +112,11 @@ public class LocationReadModel
     public string Type { get; set; } = string.Empty;
 }
 
-public class BOMReadModel
+public class BomReadModel
 {
-    public Guid BOMId { get; set; }
+    public Guid BomId { get; set; }
     public Guid ParentMaterialId { get; set; }
-    public string BOMName { get; set; } = string.Empty;
+    public string BomName { get; set; } = string.Empty;
     public string Version { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public DateTime EffectiveDate { get; set; }

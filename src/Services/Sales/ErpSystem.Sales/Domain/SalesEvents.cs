@@ -6,7 +6,7 @@ public class SalesIntegrationEvents
 {
     public record OrderConfirmedIntegrationEvent(
         Guid OrderId,
-        string SONumber,
+        string SoNumber,
         List<OrderConfirmedItem> Items
     ) : INotification;
 

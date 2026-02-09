@@ -5,14 +5,9 @@ namespace ErpSystem.Analytics.Infrastructure;
 /// <summary>
 /// Service for BI analytics and dashboard data retrieval
 /// </summary>
-public class BiAnalyticsService
+public class BiAnalyticsService(IConfiguration configuration)
 {
-    private readonly string _connectionString;
-
-    public BiAnalyticsService(IConfiguration configuration)
-    {
-        _connectionString = configuration.GetConnectionString("AnalyticsConnection") ?? throw new ArgumentNullException("AnalyticsConnection");
-    }
+    private readonly string _connectionString = configuration.GetConnectionString("AnalyticsConnection") ?? throw new ArgumentNullException("AnalyticsConnection");
 
     /// <summary>
     /// Calculates inventory turnover rate for materials
@@ -20,13 +15,13 @@ public class BiAnalyticsService
     /// </summary>
     public async Task<List<InventoryTurnoverResult>> GetInventoryTurnover(string tenantId, int days)
     {
-        var result = new List<InventoryTurnoverResult>();
+        List<InventoryTurnoverResult> result = [];
 
-        using var conn = new NpgsqlConnection(_connectionString);
+        using NpgsqlConnection conn = new NpgsqlConnection(this._connectionString);
         await conn.OpenAsync();
 
         // Query using continuous aggregate daily_inventory_summary
-        using var cmd = new NpgsqlCommand(
+        using NpgsqlCommand cmd = new NpgsqlCommand(
             @"WITH cogs AS (
                 -- Cost of Goods Sold (Usage * Cost)
                 SELECT 
@@ -57,7 +52,7 @@ public class BiAnalyticsService
 
         cmd.Parameters.AddWithValue("days", days);
 
-        using var reader = await cmd.ExecuteReaderAsync();
+        using NpgsqlDataReader reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
             result.Add(new InventoryTurnoverResult(
@@ -79,16 +74,19 @@ public class BiAnalyticsService
         // This is a simplified implementation. Real OEE requires detailed event logging for downtime.
         // For now, we simulate Based on Availability (Up time vs Total time) and Quality (Pass rate).
         
-        var result = new List<OeeResult>();
+        List<OeeResult> result =
+        [
+            new OeeResult("EQUIP-CNC-01", 0.85m, 0.92m, 0.98m, 0.76m),
+            new OeeResult("EQUIP-LATH-02", 0.90m, 0.88m, 0.95m, 0.75m)
+        ];
 
         // In a real scenario, we'd query equipment logs and quality checks
         // Dummy implementation for demonstration:
-        result.Add(new OeeResult("EQUIP-CNC-01", 0.85m, 0.92m, 0.98m, 0.76m));
-        result.Add(new OeeResult("EQUIP-LATH-02", 0.90m, 0.88m, 0.95m, 0.75m));
 
         return await Task.FromResult(result);
     }
 }
 
 public record InventoryTurnoverResult(string MaterialId, decimal Cogs, decimal AverageInventoryValue, decimal TurnoverRate);
+
 public record OeeResult(string EquipmentId, decimal Availability, decimal Performance, decimal Quality, decimal TotalOee);

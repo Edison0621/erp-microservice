@@ -23,7 +23,7 @@ public class DemandForecast : AggregateRoot<Guid>
         DateTime forecastDate,
         double confidenceScore)
     {
-        var forecast = new DemandForecast();
+        DemandForecast forecast = new DemandForecast();
         forecast.ApplyChange(new DemandForecastCreatedEvent(
             id,
             tenantId,
@@ -41,13 +41,13 @@ public class DemandForecast : AggregateRoot<Guid>
         switch (@event)
         {
             case DemandForecastCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                MaterialId = e.MaterialId;
-                WarehouseId = e.WarehouseId;
-                PredictedQuantity = e.PredictedQuantity;
-                ForecastDate = e.ForecastDate;
-                ConfidenceScore = e.ConfidenceScore;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.MaterialId = e.MaterialId;
+                this.WarehouseId = e.WarehouseId;
+                this.PredictedQuantity = e.PredictedQuantity;
+                this.ForecastDate = e.ForecastDate;
+                this.ConfidenceScore = e.ConfidenceScore;
                 break;
         }
     }
@@ -64,5 +64,5 @@ public record DemandForecastCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

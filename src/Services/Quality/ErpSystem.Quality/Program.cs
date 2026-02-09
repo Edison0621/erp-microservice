@@ -6,7 +6,7 @@ using ErpSystem.Quality.Infrastructure;
 using ErpSystem.Quality.Application;
 using MediatR;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -39,7 +39,7 @@ builder.Services.AddScoped<IEventStore>(sp =>
 builder.Services.AddScoped<IQualityPointRepository, QualityPointRepository>();
 builder.Services.AddScoped<QualityIntegrationEventHandlers>();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -52,9 +52,9 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Ensure databases created
-using (var scope = app.Services.CreateScope())
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<QualityDbContext>();
+    QualityDbContext db = scope.ServiceProvider.GetRequiredService<QualityDbContext>();
     await db.Database.EnsureCreatedAsync();
 }
 
@@ -62,13 +62,11 @@ app.Run();
 
 namespace ErpSystem.Quality.Infrastructure
 {
-    public class QualityDbContext : DbContext
+    public class QualityDbContext(DbContextOptions<QualityDbContext> options) : DbContext(options)
     {
         public DbSet<EventStream> Events { get; set; } = null!;
         public DbSet<QualityPoint> QualityPoints { get; set; } = null!;
         public DbSet<QualityCheckReadModel> QualityChecks { get; set; } = null!;
-
-        public QualityDbContext(DbContextOptions<QualityDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -92,10 +90,9 @@ namespace ErpSystem.Quality.Infrastructure
         public DateTime CreatedAt { get; set; }
     }
 
-    public class QualityPointRepository : IQualityPointRepository
+    public class QualityPointRepository(QualityDbContext context) : IQualityPointRepository
     {
-        private readonly QualityDbContext _context;
-        public QualityPointRepository(QualityDbContext context) => _context = context;
+        private readonly QualityDbContext _context = context;
 
         public Task<List<QualityPoint>> GetPointsForMaterial(string materialId, string operationType)
         {

@@ -44,14 +44,14 @@ public enum TaskPriority
 
 public record DateRange(DateTime StartDate, DateTime EndDate)
 {
-    public int DurationDays => (EndDate - StartDate).Days;
-    public bool IsOverdue => DateTime.UtcNow > EndDate;
+    public int DurationDays => (this.EndDate - this.StartDate).Days;
+    public bool IsOverdue => DateTime.UtcNow > this.EndDate;
 }
 
 public record Budget(decimal PlannedAmount, decimal ActualAmount, string Currency = "CNY")
 {
-    public decimal Variance => PlannedAmount - ActualAmount;
-    public decimal VariancePercent => PlannedAmount > 0 ? (Variance / PlannedAmount) * 100 : 0;
+    public decimal Variance => this.PlannedAmount - this.ActualAmount;
+    public decimal VariancePercent => this.PlannedAmount > 0 ? (this.Variance / this.PlannedAmount) * 100 : 0;
 }
 
 #endregion
@@ -186,7 +186,7 @@ public class ProjectTask
     public int ActualHours { get; private set; }
     public int ProgressPercent { get; private set; }
     public Guid? ParentTaskId { get; private set; }
-    public List<Guid> DependsOnTaskIds { get; private set; } = new();
+    public List<Guid> DependsOnTaskIds { get; private set; } = [];
     public DateTime CreatedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
 
@@ -219,24 +219,29 @@ public class ProjectTask
 
     public void UpdateProgress(int percent)
     {
-        ProgressPercent = Math.Clamp(percent, 0, 100);
-        if (ProgressPercent == 100 && Status != ProjectTaskStatus.Completed)
-            Status = ProjectTaskStatus.InReview;
-        else if (ProgressPercent > 0 && Status == ProjectTaskStatus.Open)
-            Status = ProjectTaskStatus.InProgress;
+        this.ProgressPercent = Math.Clamp(percent, 0, 100);
+        switch (this.ProgressPercent)
+        {
+            case 100 when this.Status != ProjectTaskStatus.Completed:
+                this.Status = ProjectTaskStatus.InReview;
+                break;
+            case > 0 when this.Status == ProjectTaskStatus.Open:
+                this.Status = ProjectTaskStatus.InProgress;
+                break;
+        }
     }
 
     public void Complete(int actualHours)
     {
-        Status = ProjectTaskStatus.Completed;
-        ProgressPercent = 100;
-        ActualHours = actualHours;
-        CompletedAt = DateTime.UtcNow;
+        this.Status = ProjectTaskStatus.Completed;
+        this.ProgressPercent = 100;
+        this.ActualHours = actualHours;
+        this.CompletedAt = DateTime.UtcNow;
     }
 
     public void ChangeStatus(ProjectTaskStatus newStatus)
     {
-        Status = newStatus;
+        this.Status = newStatus;
     }
 }
 
@@ -263,8 +268,8 @@ public class Milestone
 
     public void MarkAsReached()
     {
-        IsReached = true;
-        ReachedAt = DateTime.UtcNow;
+        this.IsReached = true;
+        this.ReachedAt = DateTime.UtcNow;
     }
 }
 
@@ -289,14 +294,14 @@ public class Project : AggregateRoot<Guid>
     public string? CustomerId { get; private set; }
     public string ProjectManagerId { get; private set; } = string.Empty;
     
-    public List<ProjectTask> Tasks { get; private set; } = new();
-    public List<Milestone> Milestones { get; private set; } = new();
-    public List<TeamMember> TeamMembers { get; private set; } = new();
+    public List<ProjectTask> Tasks { get; private set; } = [];
+    public List<Milestone> Milestones { get; private set; } = [];
+    public List<TeamMember> TeamMembers { get; private set; } = [];
 
-    public int TotalTasks => Tasks.Count;
-    public int CompletedTasks => Tasks.Count(t => t.Status == ProjectTaskStatus.Completed);
-    public decimal ProgressPercent => TotalTasks > 0 ? (decimal)Tasks.Sum(t => t.ProgressPercent) / TotalTasks : 0;
-    public bool IsOverdue => DateTime.UtcNow > EndDate && Status != ProjectStatus.Completed;
+    public int TotalTasks => this.Tasks.Count;
+    public int CompletedTasks => this.Tasks.Count(t => t.Status == ProjectTaskStatus.Completed);
+    public decimal ProgressPercent => this.TotalTasks > 0 ? (decimal)this.Tasks.Sum(t => t.ProgressPercent) / this.TotalTasks : 0;
+    public bool IsOverdue => DateTime.UtcNow > this.EndDate && this.Status != ProjectStatus.Completed;
 
     public static Project Create(
         Guid id,
@@ -314,7 +319,7 @@ public class Project : AggregateRoot<Guid>
         if (endDate <= startDate)
             throw new ArgumentException("End date must be after start date");
 
-        var project = new Project();
+        Project project = new Project();
         project.ApplyChange(new ProjectCreatedEvent(
             id, projectNumber, name, type, startDate, endDate,
             budget, currency, customerId, projectManagerId, description));
@@ -323,8 +328,8 @@ public class Project : AggregateRoot<Guid>
 
     public void ChangeStatus(ProjectStatus newStatus)
     {
-        if (Status == newStatus) return;
-        ApplyChange(new ProjectStatusChangedEvent(Id, Status, newStatus));
+        if (this.Status == newStatus) return;
+        this.ApplyChange(new ProjectStatusChangedEvent(this.Id, this.Status, newStatus));
     }
 
     public Guid AddTask(
@@ -336,59 +341,57 @@ public class Project : AggregateRoot<Guid>
         int estimatedHours,
         Guid? parentTaskId = null)
     {
-        var taskId = Guid.NewGuid();
-        var taskNumber = $"T-{Tasks.Count + 1:D3}";
-        ApplyChange(new TaskAddedEvent(
-            Id, taskId, taskNumber, title, description, priority, dueDate, assigneeId, estimatedHours));
+        Guid taskId = Guid.NewGuid();
+        string taskNumber = $"T-{this.Tasks.Count + 1:D3}";
+        this.ApplyChange(new TaskAddedEvent(this.Id, taskId, taskNumber, title, description, priority, dueDate, assigneeId, estimatedHours));
         return taskId;
     }
 
     public void UpdateTaskProgress(Guid taskId, int progressPercent)
     {
-        var task = Tasks.FirstOrDefault(t => t.Id == taskId);
+        ProjectTask? task = this.Tasks.FirstOrDefault(t => t.Id == taskId);
         if (task == null)
             throw new InvalidOperationException("Task not found");
 
-        var oldStatus = task.Status;
+        ProjectTaskStatus oldStatus = task.Status;
         task.UpdateProgress(progressPercent);
         
-        if (oldStatus != task.Status)
-            ApplyChange(new TaskStatusChangedEvent(Id, taskId, oldStatus, task.Status, progressPercent));
+        if (oldStatus != task.Status) this.ApplyChange(new TaskStatusChangedEvent(this.Id, taskId, oldStatus, task.Status, progressPercent));
     }
 
     public void CompleteTask(Guid taskId, int actualHours)
     {
-        var task = Tasks.FirstOrDefault(t => t.Id == taskId);
+        ProjectTask? task = this.Tasks.FirstOrDefault(t => t.Id == taskId);
         if (task == null)
             throw new InvalidOperationException("Task not found");
 
         task.Complete(actualHours);
-        ApplyChange(new TaskCompletedEvent(Id, taskId, DateTime.UtcNow, actualHours));
+        this.ApplyChange(new TaskCompletedEvent(this.Id, taskId, DateTime.UtcNow, actualHours));
     }
 
     public Guid AddMilestone(string name, DateTime dueDate, string? description = null)
     {
-        var milestoneId = Guid.NewGuid();
-        ApplyChange(new MilestoneAddedEvent(Id, milestoneId, name, dueDate, description));
+        Guid milestoneId = Guid.NewGuid();
+        this.ApplyChange(new MilestoneAddedEvent(this.Id, milestoneId, name, dueDate, description));
         return milestoneId;
     }
 
     public void ReachMilestone(Guid milestoneId)
     {
-        var milestone = Milestones.FirstOrDefault(m => m.Id == milestoneId);
+        Milestone? milestone = this.Milestones.FirstOrDefault(m => m.Id == milestoneId);
         if (milestone == null)
             throw new InvalidOperationException("Milestone not found");
 
         milestone.MarkAsReached();
-        ApplyChange(new MilestoneReachedEvent(Id, milestoneId, DateTime.UtcNow));
+        this.ApplyChange(new MilestoneReachedEvent(this.Id, milestoneId, DateTime.UtcNow));
     }
 
     public void AddTeamMember(string userId, string role)
     {
-        if (TeamMembers.Any(m => m.UserId == userId))
+        if (this.TeamMembers.Any(m => m.UserId == userId))
             throw new InvalidOperationException("Team member already exists");
 
-        ApplyChange(new TeamMemberAddedEvent(Id, userId, role));
+        this.ApplyChange(new TeamMemberAddedEvent(this.Id, userId, role));
     }
 
     public void UpdateBudget(decimal newBudget, string? reason = null)
@@ -396,7 +399,7 @@ public class Project : AggregateRoot<Guid>
         if (newBudget < 0)
             throw new ArgumentException("Budget cannot be negative");
 
-        ApplyChange(new ProjectBudgetUpdatedEvent(Id, PlannedBudget, newBudget, reason));
+        this.ApplyChange(new ProjectBudgetUpdatedEvent(this.Id, this.PlannedBudget, newBudget, reason));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -404,41 +407,41 @@ public class Project : AggregateRoot<Guid>
         switch (@event)
         {
             case ProjectCreatedEvent e:
-                Id = e.ProjectId;
-                ProjectNumber = e.ProjectNumber;
-                Name = e.Name;
-                Type = e.Type;
-                Status = ProjectStatus.Planning;
-                StartDate = e.StartDate;
-                EndDate = e.EndDate;
-                PlannedBudget = e.Budget;
-                Currency = e.Currency;
-                CustomerId = e.CustomerId;
-                ProjectManagerId = e.ProjectManagerId;
-                Description = e.Description;
+                this.Id = e.ProjectId;
+                this.ProjectNumber = e.ProjectNumber;
+                this.Name = e.Name;
+                this.Type = e.Type;
+                this.Status = ProjectStatus.Planning;
+                this.StartDate = e.StartDate;
+                this.EndDate = e.EndDate;
+                this.PlannedBudget = e.Budget;
+                this.Currency = e.Currency;
+                this.CustomerId = e.CustomerId;
+                this.ProjectManagerId = e.ProjectManagerId;
+                this.Description = e.Description;
                 break;
 
             case ProjectStatusChangedEvent e:
-                Status = e.NewStatus;
+                this.Status = e.NewStatus;
                 break;
 
             case TaskAddedEvent e:
-                var task = ProjectTask.Create(
+                ProjectTask task = ProjectTask.Create(
                     e.TaskId, e.TaskNumber, e.Title, e.Description,
                     e.Priority, e.DueDate, e.AssigneeId, e.EstimatedHours);
-                Tasks.Add(task);
+                this.Tasks.Add(task);
                 break;
 
             case MilestoneAddedEvent e:
-                Milestones.Add(Milestone.Create(e.MilestoneId, e.Name, e.DueDate, e.Description));
+                this.Milestones.Add(Milestone.Create(e.MilestoneId, e.Name, e.DueDate, e.Description));
                 break;
 
             case TeamMemberAddedEvent e:
-                TeamMembers.Add(new TeamMember(e.UserId, e.Role, DateTime.UtcNow));
+                this.TeamMembers.Add(new TeamMember(e.UserId, e.Role, DateTime.UtcNow));
                 break;
 
             case ProjectBudgetUpdatedEvent e:
-                PlannedBudget = e.NewBudget;
+                this.PlannedBudget = e.NewBudget;
                 break;
         }
     }

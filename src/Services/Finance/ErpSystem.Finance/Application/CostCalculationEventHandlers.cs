@@ -1,6 +1,5 @@
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.Finance.Domain;
-using Microsoft.Extensions.Logging;
 
 namespace ErpSystem.Finance.Application;
 
@@ -8,47 +7,33 @@ namespace ErpSystem.Finance.Application;
 /// Integration Event Handlers for Cost Calculation
 /// Subscribes to inventory events to update material cost valuations
 /// </summary>
-public class CostCalculationEventHandlers
+public class CostCalculationEventHandlers(
+    IEventStore eventStore,
+    ILogger<CostCalculationEventHandlers> logger)
 {
-    private readonly IEventStore _eventStore;
-    private readonly ILogger<CostCalculationEventHandlers> _logger;
-
-    public CostCalculationEventHandlers(
-        IEventStore eventStore,
-        ILogger<CostCalculationEventHandlers> logger)
-    {
-        _eventStore = eventStore;
-        _logger = logger;
-    }
-
     /// <summary>
     /// Handle goods received from procurement
     /// </summary>
     public async Task HandleGoodsReceivedEvent(GoodsReceivedIntegrationEvent @event)
     {
-        _logger.LogInformation("Processing goods receipt for cost calculation: {SourceId}", @event.SourceId);
+        logger.LogInformation("Processing goods receipt for cost calculation: {SourceId}", @event.SourceId);
 
-        foreach (var item in @event.Items)
+        foreach (GoodsReceivedItem item in @event.Items)
         {
             try
             {
                 // Generate a deterministic GUID from the WarehouseId and MaterialId
-                var key = $"{item.WarehouseId}_{item.MaterialId}";
-                var valuationId = Guid.Parse(string.Format("{0:X32}", key.GetHashCode()));
+                string key = $"{item.WarehouseId}_{item.MaterialId}";
+                Guid valuationId = Guid.Parse($"{key.GetHashCode():X32}");
                 
                 // Load or create valuation aggregate
-                var valuation = await _eventStore.LoadAggregateAsync<MaterialCostValuation>(valuationId);
-                
-                if (valuation == null)
-                {
-                    // Create new valuation with initial cost from purchase order
-                    valuation = MaterialCostValuation.Create(
-                        valuationId,
-                        @event.TenantId,
-                        item.MaterialId,
-                        item.WarehouseId,
-                        item.UnitCost);
-                }
+                // Create new valuation with initial cost from purchase order
+                MaterialCostValuation valuation = await eventStore.LoadAggregateAsync<MaterialCostValuation>(valuationId) ?? MaterialCostValuation.Create(
+                    valuationId,
+                    @event.TenantId,
+                    item.MaterialId,
+                    item.WarehouseId,
+                    item.UnitCost);
 
                 // Process receipt to update moving average
                 valuation.ProcessReceipt(
@@ -58,15 +43,15 @@ public class CostCalculationEventHandlers
                     item.UnitCost,
                     @event.OccurredAt);
 
-                await _eventStore.SaveAggregateAsync(valuation);
-                
-                _logger.LogInformation(
+                await eventStore.SaveAggregateAsync(valuation);
+
+                logger.LogInformation(
                     "Updated cost valuation for Material {MaterialId} in Warehouse {WarehouseId}. New Avg Cost: {AvgCost}",
                     item.MaterialId, item.WarehouseId, valuation.CurrentAverageCost);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process cost calculation for material {MaterialId}", item.MaterialId);
+                logger.LogError(ex, "Failed to process cost calculation for material {MaterialId}", item.MaterialId);
                 throw;
             }
         }
@@ -77,20 +62,20 @@ public class CostCalculationEventHandlers
     /// </summary>
     public async Task HandleMaterialIssuedEvent(MaterialIssuedIntegrationEvent @event)
     {
-        _logger.LogInformation("Processing material issue for cost calculation: {SourceId}", @event.SourceId);
+        logger.LogInformation("Processing material issue for cost calculation: {SourceId}", @event.SourceId);
 
-        foreach (var item in @event.Items)
+        foreach (MaterialIssuedItem item in @event.Items)
         {
             try
             {
-                var key = $"{item.WarehouseId}_{item.MaterialId}";
-                var valuationId = Guid.Parse(string.Format("{0:X32}", key.GetHashCode()));
+                string key = $"{item.WarehouseId}_{item.MaterialId}";
+                Guid valuationId = Guid.Parse($"{key.GetHashCode():X32}");
                 
-                var valuation = await _eventStore.LoadAggregateAsync<MaterialCostValuation>(valuationId);
+                MaterialCostValuation? valuation = await eventStore.LoadAggregateAsync<MaterialCostValuation>(valuationId);
                 
                 if (valuation == null)
                 {
-                    _logger.LogWarning(
+                    logger.LogWarning(
                         "No cost valuation found for Material {MaterialId} in Warehouse {WarehouseId}. Creating with zero cost.",
                         item.MaterialId, item.WarehouseId);
                     
@@ -109,16 +94,16 @@ public class CostCalculationEventHandlers
                     item.Quantity,
                     @event.OccurredAt);
 
-                await _eventStore.SaveAggregateAsync(valuation);
-                
-                _logger.LogInformation(
+                await eventStore.SaveAggregateAsync(valuation);
+
+                logger.LogInformation(
                     "Processed cost for material issue {MaterialId}. Cost: {Cost}, Qty: {Qty}, Total: {Total}",
                     item.MaterialId, valuation.CurrentAverageCost, item.Quantity, 
                     valuation.CurrentAverageCost * item.Quantity);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process cost calculation for material issue {MaterialId}", item.MaterialId);
+                logger.LogError(ex, "Failed to process cost calculation for material issue {MaterialId}", item.MaterialId);
                 throw;
             }
         }

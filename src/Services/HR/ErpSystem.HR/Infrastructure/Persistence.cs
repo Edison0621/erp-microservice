@@ -3,11 +3,9 @@ using ErpSystem.BuildingBlocks.Domain;
 
 namespace ErpSystem.HR.Infrastructure;
 
-public class HREventStoreDbContext : DbContext
+public class HrEventStoreDbContext(DbContextOptions<HrEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public HREventStoreDbContext(DbContextOptions<HREventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -19,12 +17,10 @@ public class HREventStoreDbContext : DbContext
     }
 }
 
-public class HRReadDbContext : DbContext
+public class HrReadDbContext(DbContextOptions<HrReadDbContext> options) : DbContext(options)
 {
     public DbSet<EmployeeReadModel> Employees { get; set; } = null!;
     public DbSet<EmployeeEventReadModel> EmployeeEvents { get; set; } = null!;
-
-    public HRReadDbContext(DbContextOptions<HRReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

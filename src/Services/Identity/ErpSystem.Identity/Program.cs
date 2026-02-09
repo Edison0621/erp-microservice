@@ -1,9 +1,7 @@
 using ErpSystem.Identity.Infrastructure;
-using ErpSystem.Identity.Domain;
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using Microsoft.Extensions.Hosting;
 using MediatR;
 
 namespace ErpSystem.Identity;
@@ -12,8 +10,7 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var builder = WebApplication.CreateBuilder(args);
-        
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
         builder.Services.AddControllers();
@@ -27,7 +24,7 @@ public class Program
             options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
         // MediatR
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(ErpSystem.Identity.Application.HRIntegrationEventHandler).Assembly));
+        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Application.HrIntegrationEventHandler).Assembly));
         builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
         builder.Services.AddDaprEventBus();
 
@@ -43,7 +40,7 @@ public class Program
         builder.Services.AddScoped(typeof(EventStoreRepository<>));
         builder.Services.AddHealthChecks();
 
-        var app = builder.Build();
+        WebApplication app = builder.Build();
 
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
@@ -61,13 +58,11 @@ public class Program
         // Auto-migrate (for demo)
         if (!app.Environment.IsEnvironment("Testing"))
         {
-            using (var scope = app.Services.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
-                db.Database.EnsureCreated();
-                var readDb = scope.ServiceProvider.GetRequiredService<IdentityReadDbContext>();
-                readDb.Database.EnsureCreated();
-            }
+            using IServiceScope scope = app.Services.CreateScope();
+            EventStoreDbContext db = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
+            db.Database.EnsureCreated();
+            IdentityReadDbContext readDb = scope.ServiceProvider.GetRequiredService<IdentityReadDbContext>();
+            readDb.Database.EnsureCreated();
         }
 
         app.Run();

@@ -20,7 +20,7 @@ public class Equipment : AggregateRoot<Guid>
         string equipmentCode,
         string workCenterId)
     {
-        var equipment = new Equipment();
+        Equipment equipment = new Equipment();
         equipment.ApplyChange(new EquipmentCreatedEvent(
             id,
             tenantId,
@@ -33,14 +33,14 @@ public class Equipment : AggregateRoot<Guid>
 
     public void MarkAsDown()
     {
-        if (Status == EquipmentStatus.Down) return;
-        ApplyChange(new EquipmentStatusChangedEvent(Id, EquipmentStatus.Down, DateTime.UtcNow));
+        if (this.Status == EquipmentStatus.Down) return;
+        this.ApplyChange(new EquipmentStatusChangedEvent(this.Id, EquipmentStatus.Down, DateTime.UtcNow));
     }
 
     public void MarkAsOperational()
     {
-        if (Status == EquipmentStatus.Operational) return;
-        ApplyChange(new EquipmentStatusChangedEvent(Id, EquipmentStatus.Operational, DateTime.UtcNow));
+        if (this.Status == EquipmentStatus.Operational) return;
+        this.ApplyChange(new EquipmentStatusChangedEvent(this.Id, EquipmentStatus.Operational, DateTime.UtcNow));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -48,15 +48,15 @@ public class Equipment : AggregateRoot<Guid>
         switch (@event)
         {
             case EquipmentCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                Name = e.Name;
-                EquipmentCode = e.EquipmentCode;
-                WorkCenterId = e.WorkCenterId;
-                Status = EquipmentStatus.Operational;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.Name = e.Name;
+                this.EquipmentCode = e.EquipmentCode;
+                this.WorkCenterId = e.WorkCenterId;
+                this.Status = EquipmentStatus.Operational;
                 break;
             case EquipmentStatusChangedEvent e:
-                Status = e.Status;
+                this.Status = e.Status;
                 break;
         }
     }
@@ -78,7 +78,7 @@ public record EquipmentCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record EquipmentStatusChangedEvent(
@@ -87,5 +87,5 @@ public record EquipmentStatusChangedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

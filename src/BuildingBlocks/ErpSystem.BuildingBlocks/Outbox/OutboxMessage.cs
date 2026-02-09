@@ -33,24 +33,24 @@ public class OutboxMessage
 
     public void MarkAsProcessed()
     {
-        ProcessedAt = DateTime.UtcNow;
+        this.ProcessedAt = DateTime.UtcNow;
     }
 
     public void MarkAsFailed(string error)
     {
-        RetryCount++;
-        Error = error;
+        this.RetryCount++;
+        this.Error = error;
     }
 
     public T? DeserializePayload<T>() where T : class
     {
-        return JsonSerializer.Deserialize<T>(Payload);
+        return JsonSerializer.Deserialize<T>(this.Payload);
     }
 
     public object? DeserializePayload()
     {
-        var type = System.Type.GetType(MessageType);
-        return type is not null ? JsonSerializer.Deserialize(Payload, type) : null;
+        Type? type = Type.GetType(this.MessageType);
+        return type is not null ? JsonSerializer.Deserialize(this.Payload, type) : null;
     }
 }
 

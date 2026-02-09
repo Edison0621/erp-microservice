@@ -27,7 +27,7 @@ public class WarehouseLocation : AggregateRoot<Guid>
 
     public static WarehouseLocation Create(Guid id, Guid warehouseId, string code, string name, string type)
     {
-        var location = new WarehouseLocation();
+        WarehouseLocation location = new WarehouseLocation();
         location.ApplyChange(new LocationCreatedEvent(id, warehouseId, code, name, type));
         return location;
     }
@@ -37,11 +37,11 @@ public class WarehouseLocation : AggregateRoot<Guid>
         switch (@event)
         {
             case LocationCreatedEvent e:
-                Id = e.LocationId;
-                WarehouseId = e.WarehouseId;
-                Code = e.Code;
-                Name = e.Name;
-                Type = e.Type;
+                this.Id = e.LocationId;
+                this.WarehouseId = e.WarehouseId;
+                this.Code = e.Code;
+                this.Name = e.Name;
+                this.Type = e.Type;
                 break;
         }
     }

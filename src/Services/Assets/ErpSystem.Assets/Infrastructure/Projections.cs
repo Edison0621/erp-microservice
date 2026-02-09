@@ -3,7 +3,7 @@ using ErpSystem.Assets.Domain;
 
 namespace ErpSystem.Assets.Infrastructure;
 
-public class AssetProjectionHandler :
+public class AssetProjectionHandler(AssetsReadDbContext db) :
     INotificationHandler<AssetRegisteredEvent>,
     INotificationHandler<AssetActivatedEvent>,
     INotificationHandler<AssetTransferredEvent>,
@@ -12,24 +12,20 @@ public class AssetProjectionHandler :
     INotificationHandler<AssetDisposedEvent>,
     INotificationHandler<AssetRevaluedEvent>
 {
-    private readonly AssetsReadDbContext _db;
-
-    public AssetProjectionHandler(AssetsReadDbContext db) => _db = db;
-
     public async Task Handle(AssetRegisteredEvent e, CancellationToken ct)
     {
-        var monthlyDep = e.DepreciationMethod == DepreciationMethod.StraightLine
+        decimal monthlyDep = e.DepreciationMethod == DepreciationMethod.StraightLine
             ? (e.AcquisitionCost - e.SalvageValue) / e.UsefulLifeMonths
             : 0;
 
-        var asset = new AssetReadModel
+        AssetReadModel asset = new AssetReadModel
         {
             Id = e.AssetId,
             AssetNumber = e.AssetNumber,
             Name = e.Name,
             Description = e.Description,
             Type = e.Type.ToString(),
-            Status = AssetStatus.Draft.ToString(),
+            Status = nameof(AssetStatus.Draft),
             AcquisitionCost = e.AcquisitionCost,
             AcquisitionDate = e.AcquisitionDate,
             CurrentValue = e.AcquisitionCost,
@@ -41,37 +37,37 @@ public class AssetProjectionHandler :
             MonthlyDepreciation = monthlyDep,
             CreatedAt = e.OccurredOn
         };
-        _db.Assets.Add(asset);
-        await _db.SaveChangesAsync(ct);
+        db.Assets.Add(asset);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task Handle(AssetActivatedEvent e, CancellationToken ct)
     {
-        var asset = await _db.Assets.FindAsync([e.AssetId], ct);
+        AssetReadModel? asset = await db.Assets.FindAsync([e.AssetId], ct);
         if (asset != null)
         {
-            asset.Status = AssetStatus.Active.ToString();
-            await _db.SaveChangesAsync(ct);
+            asset.Status = nameof(AssetStatus.Active);
+            await db.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(AssetTransferredEvent e, CancellationToken ct)
     {
-        var asset = await _db.Assets.FindAsync([e.AssetId], ct);
+        AssetReadModel? asset = await db.Assets.FindAsync([e.AssetId], ct);
         if (asset != null)
         {
             asset.LocationId = e.ToLocationId;
             asset.DepartmentId = e.ToDepartmentId;
             asset.TransferCount++;
-            await _db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(MaintenanceRecordedEvent e, CancellationToken ct)
     {
-        var asset = await _db.Assets.FindAsync([e.AssetId], ct);
+        AssetReadModel? asset = await db.Assets.FindAsync([e.AssetId], ct);
         
-        var maintenance = new MaintenanceReadModel
+        MaintenanceReadModel maintenance = new MaintenanceReadModel
         {
             Id = e.MaintenanceId,
             AssetId = e.AssetId,
@@ -83,7 +79,7 @@ public class AssetProjectionHandler :
             Cost = e.Cost,
             PerformedBy = e.PerformedBy
         };
-        _db.MaintenanceRecords.Add(maintenance);
+        db.MaintenanceRecords.Add(maintenance);
 
         if (asset != null)
         {
@@ -91,14 +87,14 @@ public class AssetProjectionHandler :
             asset.MaintenanceCount++;
         }
 
-        await _db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task Handle(DepreciationCalculatedEvent e, CancellationToken ct)
     {
-        var asset = await _db.Assets.FindAsync([e.AssetId], ct);
+        AssetReadModel? asset = await db.Assets.FindAsync([e.AssetId], ct);
 
-        var depreciation = new DepreciationReadModel
+        DepreciationReadModel depreciation = new DepreciationReadModel
         {
             Id = Guid.NewGuid(),
             AssetId = e.AssetId,
@@ -109,7 +105,7 @@ public class AssetProjectionHandler :
             AccumulatedDepreciation = e.AccumulatedDepreciation,
             BookValue = e.BookValue
         };
-        _db.DepreciationRecords.Add(depreciation);
+        db.DepreciationRecords.Add(depreciation);
 
         if (asset != null)
         {
@@ -118,27 +114,27 @@ public class AssetProjectionHandler :
             asset.BookValue = e.BookValue;
         }
 
-        await _db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task Handle(AssetDisposedEvent e, CancellationToken ct)
     {
-        var asset = await _db.Assets.FindAsync([e.AssetId], ct);
+        AssetReadModel? asset = await db.Assets.FindAsync([e.AssetId], ct);
         if (asset != null)
         {
-            asset.Status = AssetStatus.Disposed.ToString();
+            asset.Status = nameof(AssetStatus.Disposed);
             asset.DisposedAt = e.DisposalDate;
-            await _db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
         }
     }
 
     public async Task Handle(AssetRevaluedEvent e, CancellationToken ct)
     {
-        var asset = await _db.Assets.FindAsync([e.AssetId], ct);
+        AssetReadModel? asset = await db.Assets.FindAsync([e.AssetId], ct);
         if (asset != null)
         {
             asset.CurrentValue = e.NewValue;
-            await _db.SaveChangesAsync(ct);
+            await db.SaveChangesAsync(ct);
         }
     }
 }

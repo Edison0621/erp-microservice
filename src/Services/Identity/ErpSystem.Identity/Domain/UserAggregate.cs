@@ -67,55 +67,55 @@ public class User : AggregateRoot<Guid>
     public string PrimaryDepartmentId { get; private set; } = string.Empty;
     public string PrimaryPositionId { get; private set; } = string.Empty;
     
-    public List<string> Roles { get; private set; } = new();
+    public List<string> Roles { get; private set; } = [];
 
     public static User Create(Guid id, string username, string email, string displayName, string passwordHash)
     {
-        var user = new User();
+        User user = new User();
         user.ApplyChange(new UserCreatedEvent(id, username, email, displayName, passwordHash));
         return user;
     }
 
     public void LoginSucceeded(string ipAddress)
     {
-        ApplyChange(new UserLoggedInEvent(Id, DateTime.UtcNow, ipAddress));
+        this.ApplyChange(new UserLoggedInEvent(this.Id, DateTime.UtcNow, ipAddress));
     }
 
     public void LoginFailed(string reason)
     {
-        ApplyChange(new UserLoginFailedEvent(Id, reason));
-        if (AccessFailedCount >= 5)
+        this.ApplyChange(new UserLoginFailedEvent(this.Id, reason));
+        if (this.AccessFailedCount >= 5)
         {
-            LockUser("Too many failed attempts", TimeSpan.FromMinutes(15));
+            this.LockUser("Too many failed attempts", TimeSpan.FromMinutes(15));
         }
     }
 
     public void UpdateProfile(string deptId, string posId, string phone)
     {
-        ApplyChange(new UserProfileUpdatedEvent(Id, deptId, posId, phone));
+        this.ApplyChange(new UserProfileUpdatedEvent(this.Id, deptId, posId, phone));
     }
 
     public void LockUser(string reason, TimeSpan duration)
     {
-        ApplyChange(new UserLockedEvent(Id, reason, DateTime.UtcNow.Add(duration)));
+        this.ApplyChange(new UserLockedEvent(this.Id, reason, DateTime.UtcNow.Add(duration)));
     }
 
     public void UnlockUser()
     {
-        ApplyChange(new UserUnlockedEvent(Id));
+        this.ApplyChange(new UserUnlockedEvent(this.Id));
     }
 
     public void AssignRole(string roleCode)
     {
-        if (!Roles.Contains(roleCode))
+        if (!this.Roles.Contains(roleCode))
         {
-            ApplyChange(new UserRoleAssignedEvent(Id, roleCode));
+            this.ApplyChange(new UserRoleAssignedEvent(this.Id, roleCode));
         }
     }
 
     public void ResetPassword(string newPasswordHash)
     {
-        ApplyChange(new UserPasswordChangedEvent(Id, newPasswordHash));
+        this.ApplyChange(new UserPasswordChangedEvent(this.Id, newPasswordHash));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -123,40 +123,40 @@ public class User : AggregateRoot<Guid>
         switch (@event)
         {
             case UserCreatedEvent e:
-                Id = e.UserId;
-                Username = e.Username;
-                Email = e.Email;
-                DisplayName = e.DisplayName;
-                PasswordHash = e.PasswordHash;
-                AccessFailedCount = 0;
+                this.Id = e.UserId;
+                this.Username = e.Username;
+                this.Email = e.Email;
+                this.DisplayName = e.DisplayName;
+                this.PasswordHash = e.PasswordHash;
+                this.AccessFailedCount = 0;
                 break;
             case UserLoggedInEvent:
-                AccessFailedCount = 0;
-                IsLocked = false;
-                LockoutEnd = null;
+                this.AccessFailedCount = 0;
+                this.IsLocked = false;
+                this.LockoutEnd = null;
                 break;
             case UserLoginFailedEvent:
-                AccessFailedCount++;
+                this.AccessFailedCount++;
                 break;
             case UserLockedEvent e:
-                IsLocked = true;
-                LockoutEnd = e.LockoutEnd;
+                this.IsLocked = true;
+                this.LockoutEnd = e.LockoutEnd;
                 break;
             case UserUnlockedEvent:
-                IsLocked = false;
-                LockoutEnd = null;
-                AccessFailedCount = 0;
+                this.IsLocked = false;
+                this.LockoutEnd = null;
+                this.AccessFailedCount = 0;
                 break;
             case UserProfileUpdatedEvent e:
-                PrimaryDepartmentId = e.PrimaryDepartmentId;
-                PrimaryPositionId = e.PrimaryPositionId;
-                PhoneNumber = e.PhoneNumber;
+                this.PrimaryDepartmentId = e.PrimaryDepartmentId;
+                this.PrimaryPositionId = e.PrimaryPositionId;
+                this.PhoneNumber = e.PhoneNumber;
                 break;
             case UserPasswordChangedEvent e:
-                PasswordHash = e.NewPasswordHash;
+                this.PasswordHash = e.NewPasswordHash;
                 break;
             case UserRoleAssignedEvent e:
-                Roles.Add(e.RoleCode);
+                this.Roles.Add(e.RoleCode);
                 break;
         }
     }

@@ -9,7 +9,7 @@ public class AutomationRule : AggregateRoot<Guid>
 {
     public string Name { get; private set; } = string.Empty;
     public string TriggerEventType { get; private set; } = string.Empty;
-    public List<AutomationAction> Actions { get; private set; } = new();
+    public List<AutomationAction> Actions { get; private set; } = [];
     public bool IsActive { get; private set; }
     public string TenantId { get; private set; } = string.Empty;
     public string Description { get; private set; } = string.Empty;
@@ -25,7 +25,7 @@ public class AutomationRule : AggregateRoot<Guid>
         string triggerEventType,
         AutomationTriggerCondition? condition = null)
     {
-        var rule = new AutomationRule();
+        AutomationRule rule = new AutomationRule();
         rule.ApplyChange(new AutomationRuleCreatedEvent(
             id,
             tenantId,
@@ -39,40 +39,39 @@ public class AutomationRule : AggregateRoot<Guid>
 
     public void AddAction(AutomationAction action)
     {
-        if (Actions.Any(a => a.Id == action.Id))
+        if (this.Actions.Any(a => a.Id == action.Id))
             throw new InvalidOperationException($"Action {action.Id} already exists");
 
-        ApplyChange(new AutomationActionAddedEvent(Id, action, DateTime.UtcNow));
+        this.ApplyChange(new AutomationActionAddedEvent(this.Id, action, DateTime.UtcNow));
     }
 
     public void RemoveAction(string actionId)
     {
-        if (Actions.All(a => a.Id != actionId))
+        if (this.Actions.All(a => a.Id != actionId))
             throw new InvalidOperationException($"Action {actionId} not found");
 
-        ApplyChange(new AutomationActionRemovedEvent(Id, actionId, DateTime.UtcNow));
+        this.ApplyChange(new AutomationActionRemovedEvent(this.Id, actionId, DateTime.UtcNow));
     }
 
     public void Activate()
     {
-        if (IsActive)
+        if (this.IsActive)
             return;
 
-        ApplyChange(new AutomationRuleActivatedEvent(Id, DateTime.UtcNow));
+        this.ApplyChange(new AutomationRuleActivatedEvent(this.Id, DateTime.UtcNow));
     }
 
     public void Deactivate()
     {
-        if (!IsActive)
+        if (!this.IsActive)
             return;
 
-        ApplyChange(new AutomationRuleDeactivatedEvent(Id, DateTime.UtcNow));
+        this.ApplyChange(new AutomationRuleDeactivatedEvent(this.Id, DateTime.UtcNow));
     }
 
     public void RecordExecution(bool success, string? errorMessage = null)
     {
-        ApplyChange(new AutomationRuleExecutedEvent(
-            Id,
+        this.ApplyChange(new AutomationRuleExecutedEvent(this.Id,
             success,
             errorMessage,
             DateTime.UtcNow));
@@ -83,29 +82,29 @@ public class AutomationRule : AggregateRoot<Guid>
         switch (@event)
         {
             case AutomationRuleCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                Name = e.Name;
-                Description = e.Description;
-                TriggerEventType = e.TriggerEventType;
-                Condition = e.Condition;
-                IsActive = true;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.Name = e.Name;
+                this.Description = e.Description;
+                this.TriggerEventType = e.TriggerEventType;
+                this.Condition = e.Condition;
+                this.IsActive = true;
                 break;
             case AutomationActionAddedEvent e:
-                Actions.Add(e.Action);
+                this.Actions.Add(e.Action);
                 break;
             case AutomationActionRemovedEvent e:
-                Actions.RemoveAll(a => a.Id == e.ActionId);
+                this.Actions.RemoveAll(a => a.Id == e.ActionId);
                 break;
             case AutomationRuleActivatedEvent:
-                IsActive = true;
+                this.IsActive = true;
                 break;
             case AutomationRuleDeactivatedEvent:
-                IsActive = false;
+                this.IsActive = false;
                 break;
             case AutomationRuleExecutedEvent e:
-                ExecutionCount++;
-                LastExecutedAt = e.OccurredAt;
+                this.ExecutionCount++;
+                this.LastExecutedAt = e.OccurredAt;
                 break;
         }
     }
@@ -148,7 +147,7 @@ public record AutomationRuleCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record AutomationActionAddedEvent(
@@ -157,7 +156,7 @@ public record AutomationActionAddedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record AutomationActionRemovedEvent(
@@ -166,7 +165,7 @@ public record AutomationActionRemovedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record AutomationRuleActivatedEvent(
@@ -174,7 +173,7 @@ public record AutomationRuleActivatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record AutomationRuleDeactivatedEvent(
@@ -182,7 +181,7 @@ public record AutomationRuleDeactivatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record AutomationRuleExecutedEvent(
@@ -192,5 +191,5 @@ public record AutomationRuleExecutedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }

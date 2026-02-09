@@ -8,34 +8,27 @@ namespace ErpSystem.BuildingBlocks.Behaviors;
 /// Performance Behavior - Tracks slow requests and logs performance metrics.
 /// Warns when requests exceed threshold.
 /// </summary>
-public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+public class PerformanceBehavior<TRequest, TResponse>(ILogger<PerformanceBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
-    private readonly Stopwatch _timer;
-    private readonly ILogger<PerformanceBehavior<TRequest, TResponse>> _logger;
+    private readonly Stopwatch _timer = new();
     private const int SlowRequestThresholdMs = 500;
-
-    public PerformanceBehavior(ILogger<PerformanceBehavior<TRequest, TResponse>> logger)
-    {
-        _timer = new Stopwatch();
-        _logger = logger;
-    }
 
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
-        _timer.Start();
+        this._timer.Start();
 
-        var response = await next();
+        TResponse response = await next(cancellationToken);
 
-        _timer.Stop();
+        this._timer.Stop();
 
-        var elapsedMs = _timer.ElapsedMilliseconds;
+        long elapsedMs = this._timer.ElapsedMilliseconds;
 
         if (elapsedMs > SlowRequestThresholdMs)
         {
-            var requestName = typeof(TRequest).Name;
+            string requestName = typeof(TRequest).Name;
 
-            _logger.LogWarning(
+            logger.LogWarning(
                 "Long Running Request: {Name} ({ElapsedMilliseconds} ms) {@Request}",
                 requestName,
                 elapsedMs,
@@ -49,27 +42,20 @@ public class PerformanceBehavior<TRequest, TResponse> : IPipelineBehavior<TReque
 /// <summary>
 /// Unhandled Exception Behavior - Catches and logs all unhandled exceptions.
 /// </summary>
-public class UnhandledExceptionBehavior<TRequest, TResponse> : IPipelineBehavior<TRequest, TResponse>
+public class UnhandledExceptionBehavior<TRequest, TResponse>(ILogger<UnhandledExceptionBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : IRequest<TResponse>
 {
-    private readonly ILogger<UnhandledExceptionBehavior<TRequest, TResponse>> _logger;
-
-    public UnhandledExceptionBehavior(ILogger<UnhandledExceptionBehavior<TRequest, TResponse>> logger)
-    {
-        _logger = logger;
-    }
-
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
         try
         {
-            return await next();
+            return await next(cancellationToken);
         }
         catch (Exception ex)
         {
-            var requestName = typeof(TRequest).Name;
+            string requestName = typeof(TRequest).Name;
 
-            _logger.LogError(
+            logger.LogError(
                 ex,
                 "Unhandled Exception for Request {Name} {@Request}",
                 requestName,

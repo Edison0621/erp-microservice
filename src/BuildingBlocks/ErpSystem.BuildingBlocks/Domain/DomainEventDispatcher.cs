@@ -14,39 +14,30 @@ public interface IDomainEventDispatcher
     Task DispatchEventsAsync(DbContext context, CancellationToken cancellationToken = default);
 }
 
-public class DomainEventDispatcher : IDomainEventDispatcher
+public class DomainEventDispatcher(IPublisher publisher, ILogger<DomainEventDispatcher> logger) : IDomainEventDispatcher
 {
-    private readonly IPublisher _publisher;
-    private readonly ILogger<DomainEventDispatcher> _logger;
-
-    public DomainEventDispatcher(IPublisher publisher, ILogger<DomainEventDispatcher> logger)
-    {
-        _publisher = publisher;
-        _logger = logger;
-    }
-
     public async Task DispatchEventsAsync(DbContext context, CancellationToken cancellationToken = default)
     {
-        var aggregatesWithEvents = context.ChangeTracker
+        List<IAggregateRoot> aggregatesWithEvents = context.ChangeTracker
             .Entries<IAggregateRoot>()
             .Where(e => e.Entity.DomainEvents.Any())
             .Select(e => e.Entity)
             .ToList();
 
-        var domainEvents = aggregatesWithEvents
+        List<IDomainEvent> domainEvents = aggregatesWithEvents
             .SelectMany(a => a.DomainEvents)
             .ToList();
 
         // Clear events before publishing to prevent double dispatch
-        foreach (var aggregate in aggregatesWithEvents)
+        foreach (IAggregateRoot aggregate in aggregatesWithEvents)
         {
             aggregate.ClearDomainEvents();
         }
 
-        foreach (var domainEvent in domainEvents)
+        foreach (IDomainEvent domainEvent in domainEvents)
         {
-            _logger.LogDebug("Dispatching domain event: {EventType}", domainEvent.GetType().Name);
-            await _publisher.Publish(domainEvent, cancellationToken);
+            logger.LogDebug("Dispatching domain event: {EventType}", domainEvent.GetType().Name);
+            await publisher.Publish(domainEvent, cancellationToken);
         }
     }
 }
@@ -54,15 +45,8 @@ public class DomainEventDispatcher : IDomainEventDispatcher
 /// <summary>
 /// SaveChanges interceptor that dispatches domain events
 /// </summary>
-public class DomainEventDispatcherInterceptor : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+public class DomainEventDispatcherInterceptor(IDomainEventDispatcher dispatcher) : SaveChangesInterceptor
 {
-    private readonly IDomainEventDispatcher _dispatcher;
-
-    public DomainEventDispatcherInterceptor(IDomainEventDispatcher dispatcher)
-    {
-        _dispatcher = dispatcher;
-    }
-
     public override async ValueTask<int> SavedChangesAsync(
         SaveChangesCompletedEventData eventData,
         int result,
@@ -70,7 +54,7 @@ public class DomainEventDispatcherInterceptor : Microsoft.EntityFrameworkCore.Di
     {
         if (eventData.Context is not null)
         {
-            await _dispatcher.DispatchEventsAsync(eventData.Context, cancellationToken);
+            await dispatcher.DispatchEventsAsync(eventData.Context, cancellationToken);
         }
 
         return await base.SavedChangesAsync(eventData, result, cancellationToken);

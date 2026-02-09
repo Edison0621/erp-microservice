@@ -8,17 +8,8 @@ namespace ErpSystem.CRM.API;
 
 [ApiController]
 [Route("api/[controller]")]
-public class OpportunitiesController : ControllerBase
+public class OpportunitiesController(EventStoreRepository<Opportunity> repository, CrmReadDbContext readDb) : ControllerBase
 {
-    private readonly EventStoreRepository<Opportunity> _repository;
-    private readonly CrmReadDbContext _readDb;
-
-    public OpportunitiesController(EventStoreRepository<Opportunity> repository, CrmReadDbContext readDb)
-    {
-        _repository = repository;
-        _readDb = readDb;
-    }
-
     #region Queries
 
     /// <summary>
@@ -33,7 +24,7 @@ public class OpportunitiesController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var query = _readDb.Opportunities.AsQueryable();
+        IQueryable<OpportunityReadModel> query = readDb.Opportunities.AsQueryable();
 
         if (!string.IsNullOrEmpty(stage))
             query = query.Where(o => o.Stage == stage);
@@ -44,14 +35,14 @@ public class OpportunitiesController : ControllerBase
         if (!string.IsNullOrEmpty(customerId))
             query = query.Where(o => o.CustomerId == customerId);
 
-        var total = await query.CountAsync();
-        var items = await query
+        int total = await query.CountAsync();
+        List<OpportunityReadModel> items = await query
             .OrderByDescending(o => o.CreatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync();
 
-        return Ok(new { total, page, pageSize, items });
+        return this.Ok(new { total, page, pageSize, items });
     }
 
     /// <summary>
@@ -60,9 +51,9 @@ public class OpportunitiesController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetOpportunity(Guid id)
     {
-        var opportunity = await _readDb.Opportunities.FindAsync(id);
-        if (opportunity == null) return NotFound();
-        return Ok(opportunity);
+        OpportunityReadModel? opportunity = await readDb.Opportunities.FindAsync(id);
+        if (opportunity == null) return this.NotFound();
+        return this.Ok(opportunity);
     }
 
     /// <summary>
@@ -71,7 +62,7 @@ public class OpportunitiesController : ControllerBase
     [HttpGet("pipeline")]
     public async Task<IActionResult> GetPipeline()
     {
-        var pipeline = await _readDb.Opportunities
+        var pipeline = await readDb.Opportunities
             .Where(o => o.Stage != "ClosedWon" && o.Stage != "ClosedLost")
             .GroupBy(o => o.Stage)
             .Select(g => new
@@ -83,10 +74,10 @@ public class OpportunitiesController : ControllerBase
             })
             .ToListAsync();
 
-        var totalPipeline = pipeline.Sum(p => p.TotalValue);
-        var totalWeighted = pipeline.Sum(p => p.WeightedValue);
+        decimal totalPipeline = pipeline.Sum(p => p.TotalValue);
+        decimal totalWeighted = pipeline.Sum(p => p.WeightedValue);
 
-        return Ok(new { stages = pipeline, totalPipelineValue = totalPipeline, totalWeightedValue = totalWeighted });
+        return this.Ok(new { stages = pipeline, totalPipelineValue = totalPipeline, totalWeightedValue = totalWeighted });
     }
 
     /// <summary>
@@ -95,7 +86,7 @@ public class OpportunitiesController : ControllerBase
     [HttpGet("analysis")]
     public async Task<IActionResult> GetWinLossAnalysis([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
     {
-        var query = _readDb.Opportunities
+        IQueryable<OpportunityReadModel> query = readDb.Opportunities
             .Where(o => o.Stage == "ClosedWon" || o.Stage == "ClosedLost");
 
         if (startDate.HasValue)
@@ -103,14 +94,14 @@ public class OpportunitiesController : ControllerBase
         if (endDate.HasValue)
             query = query.Where(o => o.ClosedAt <= endDate.Value);
 
-        var wonCount = await query.CountAsync(o => o.Stage == "ClosedWon");
-        var lostCount = await query.CountAsync(o => o.Stage == "ClosedLost");
-        var wonValue = await query.Where(o => o.Stage == "ClosedWon").SumAsync(o => o.EstimatedValue);
-        var lostValue = await query.Where(o => o.Stage == "ClosedLost").SumAsync(o => o.EstimatedValue);
+        int wonCount = await query.CountAsync(o => o.Stage == "ClosedWon");
+        int lostCount = await query.CountAsync(o => o.Stage == "ClosedLost");
+        decimal wonValue = await query.Where(o => o.Stage == "ClosedWon").SumAsync(o => o.EstimatedValue);
+        decimal lostValue = await query.Where(o => o.Stage == "ClosedLost").SumAsync(o => o.EstimatedValue);
 
-        var winRate = wonCount + lostCount > 0 ? (decimal)wonCount / (wonCount + lostCount) * 100 : 0;
+        decimal winRate = wonCount + lostCount > 0 ? (decimal)wonCount / (wonCount + lostCount) * 100 : 0;
 
-        return Ok(new { wonCount, lostCount, wonValue, lostValue, winRate });
+        return this.Ok(new { wonCount, lostCount, wonValue, lostValue, winRate });
     }
 
     #endregion
@@ -123,9 +114,9 @@ public class OpportunitiesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateOpportunity([FromBody] CreateOpportunityRequest request)
     {
-        var oppNumber = $"OPP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+        string oppNumber = $"OPP-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
-        var opportunity = Opportunity.Create(
+        Opportunity opportunity = Opportunity.Create(
             Guid.NewGuid(),
             oppNumber,
             request.Name,
@@ -139,9 +130,9 @@ public class OpportunitiesController : ControllerBase
             request.AssignedToUserId,
             request.Description);
 
-        await _repository.SaveAsync(opportunity);
+        await repository.SaveAsync(opportunity);
 
-        return CreatedAtAction(nameof(GetOpportunity), new { id = opportunity.Id },
+        return this.CreatedAtAction(nameof(this.GetOpportunity), new { id = opportunity.Id },
             new { id = opportunity.Id, opportunityNumber = opportunity.OpportunityNumber });
     }
 
@@ -151,13 +142,13 @@ public class OpportunitiesController : ControllerBase
     [HttpPut("{id:guid}/stage")]
     public async Task<IActionResult> AdvanceStage(Guid id, [FromBody] AdvanceStageRequest request)
     {
-        var opportunity = await _repository.LoadAsync(id);
-        if (opportunity == null) return NotFound();
+        Opportunity? opportunity = await repository.LoadAsync(id);
+        if (opportunity == null) return this.NotFound();
 
         opportunity.AdvanceStage(Enum.Parse<OpportunityStage>(request.Stage), request.Notes);
-        await _repository.SaveAsync(opportunity);
+        await repository.SaveAsync(opportunity);
 
-        return Ok(new { id, stage = request.Stage, winProbability = opportunity.WinProbability });
+        return this.Ok(new { id, stage = request.Stage, winProbability = opportunity.WinProbability });
     }
 
     /// <summary>
@@ -166,13 +157,13 @@ public class OpportunitiesController : ControllerBase
     [HttpPut("{id:guid}/value")]
     public async Task<IActionResult> UpdateValue(Guid id, [FromBody] UpdateValueRequest request)
     {
-        var opportunity = await _repository.LoadAsync(id);
-        if (opportunity == null) return NotFound();
+        Opportunity? opportunity = await repository.LoadAsync(id);
+        if (opportunity == null) return this.NotFound();
 
         opportunity.UpdateValue(request.Value, request.Reason);
-        await _repository.SaveAsync(opportunity);
+        await repository.SaveAsync(opportunity);
 
-        return Ok(new { id, estimatedValue = request.Value, weightedValue = opportunity.WeightedValue });
+        return this.Ok(new { id, estimatedValue = request.Value, weightedValue = opportunity.WeightedValue });
     }
 
     /// <summary>
@@ -181,13 +172,13 @@ public class OpportunitiesController : ControllerBase
     [HttpPost("{id:guid}/won")]
     public async Task<IActionResult> MarkAsWon(Guid id, [FromBody] MarkWonRequest request)
     {
-        var opportunity = await _repository.LoadAsync(id);
-        if (opportunity == null) return NotFound();
+        Opportunity? opportunity = await repository.LoadAsync(id);
+        if (opportunity == null) return this.NotFound();
 
         opportunity.MarkAsWon(request.FinalValue, request.WinReason, request.SalesOrderId);
-        await _repository.SaveAsync(opportunity);
+        await repository.SaveAsync(opportunity);
 
-        return Ok(new { id, stage = "ClosedWon", finalValue = request.FinalValue ?? opportunity.EstimatedValue });
+        return this.Ok(new { id, stage = "ClosedWon", finalValue = request.FinalValue ?? opportunity.EstimatedValue });
     }
 
     /// <summary>
@@ -196,13 +187,13 @@ public class OpportunitiesController : ControllerBase
     [HttpPost("{id:guid}/lost")]
     public async Task<IActionResult> MarkAsLost(Guid id, [FromBody] MarkLostRequest request)
     {
-        var opportunity = await _repository.LoadAsync(id);
-        if (opportunity == null) return NotFound();
+        Opportunity? opportunity = await repository.LoadAsync(id);
+        if (opportunity == null) return this.NotFound();
 
         opportunity.MarkAsLost(request.LossReason, request.CompetitorId);
-        await _repository.SaveAsync(opportunity);
+        await repository.SaveAsync(opportunity);
 
-        return Ok(new { id, stage = "ClosedLost", lossReason = request.LossReason });
+        return this.Ok(new { id, stage = "ClosedLost", lossReason = request.LossReason });
     }
 
     /// <summary>
@@ -211,13 +202,13 @@ public class OpportunitiesController : ControllerBase
     [HttpPut("{id:guid}/assign")]
     public async Task<IActionResult> AssignOpportunity(Guid id, [FromBody] AssignOpportunityRequest request)
     {
-        var opportunity = await _repository.LoadAsync(id);
-        if (opportunity == null) return NotFound();
+        Opportunity? opportunity = await repository.LoadAsync(id);
+        if (opportunity == null) return this.NotFound();
 
         opportunity.AssignTo(request.UserId);
-        await _repository.SaveAsync(opportunity);
+        await repository.SaveAsync(opportunity);
 
-        return Ok(new { id, assignedTo = request.UserId });
+        return this.Ok(new { id, assignedTo = request.UserId });
     }
 
     /// <summary>
@@ -226,13 +217,13 @@ public class OpportunitiesController : ControllerBase
     [HttpPost("{id:guid}/competitors")]
     public async Task<IActionResult> AddCompetitor(Guid id, [FromBody] AddCompetitorRequest request)
     {
-        var opportunity = await _repository.LoadAsync(id);
-        if (opportunity == null) return NotFound();
+        Opportunity? opportunity = await repository.LoadAsync(id);
+        if (opportunity == null) return this.NotFound();
 
         opportunity.AddCompetitor(request.CompetitorId, request.CompetitorName, request.Strengths, request.Weaknesses);
-        await _repository.SaveAsync(opportunity);
+        await repository.SaveAsync(opportunity);
 
-        return Ok(new { id, message = "Competitor added" });
+        return this.Ok(new { id, message = "Competitor added" });
     }
 
     /// <summary>
@@ -241,8 +232,8 @@ public class OpportunitiesController : ControllerBase
     [HttpPost("{id:guid}/activities")]
     public async Task<IActionResult> LogActivity(Guid id, [FromBody] LogActivityRequest request)
     {
-        var opportunity = await _repository.LoadAsync(id);
-        if (opportunity == null) return NotFound();
+        Opportunity? opportunity = await repository.LoadAsync(id);
+        if (opportunity == null) return this.NotFound();
 
         opportunity.LogActivity(
             request.ActivityType,
@@ -251,9 +242,9 @@ public class OpportunitiesController : ControllerBase
             request.ActivityDate ?? DateTime.UtcNow,
             request.LoggedByUserId);
 
-        await _repository.SaveAsync(opportunity);
+        await repository.SaveAsync(opportunity);
 
-        return Ok(new { id, message = "Activity logged" });
+        return this.Ok(new { id, message = "Activity logged" });
     }
 
     #endregion
@@ -275,9 +266,13 @@ public record CreateOpportunityRequest(
 );
 
 public record AdvanceStageRequest(string Stage, string? Notes);
+
 public record UpdateValueRequest(decimal Value, string? Reason);
+
 public record MarkWonRequest(decimal? FinalValue, string? WinReason, Guid? SalesOrderId);
+
 public record MarkLostRequest(string LossReason, string? CompetitorId);
+
 public record AssignOpportunityRequest(string UserId);
 
 public record AddCompetitorRequest(

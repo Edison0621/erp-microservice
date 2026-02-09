@@ -1,13 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
-using ErpSystem.Analytics.Domain;
 using ErpSystem.Analytics.Infrastructure;
 using ErpSystem.Analytics.Application;
 using ErpSystem.Analytics.Infrastructure.BackgroundJobs;
 using MediatR;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddSignalR();
@@ -43,7 +42,7 @@ builder.Services.AddScoped<TimescaleDataExtractor>();
 builder.Services.AddScoped<ForecastingAppService>();
 builder.Services.AddHostedService<AnalyticsNotifier>();
 
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -57,9 +56,9 @@ app.MapControllers();
 app.MapHub<ErpSystem.Analytics.API.Hubs.AnalyticsHub>("/hubs/analytics");
 
 // Ensure databases created
-using (var scope = app.Services.CreateScope())
+using (IServiceScope scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
+    AnalyticsDbContext db = scope.ServiceProvider.GetRequiredService<AnalyticsDbContext>();
     await db.Database.EnsureCreatedAsync();
 }
 
@@ -67,11 +66,9 @@ app.Run();
 
 namespace ErpSystem.Analytics.Infrastructure
 {
-    public class AnalyticsDbContext : DbContext
+    public class AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options) : DbContext(options)
     {
         public DbSet<EventStream> Events { get; set; } = null!;
-
-        public AnalyticsDbContext(DbContextOptions<AnalyticsDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

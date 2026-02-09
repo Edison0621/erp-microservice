@@ -8,39 +8,30 @@ namespace ErpSystem.Payroll.API;
 
 [ApiController]
 [Route("api/v1/payroll/salary-structures")]
-public class SalaryStructuresController : ControllerBase
+public class SalaryStructuresController(IEventStore eventStore, PayrollReadDbContext readDb) : ControllerBase
 {
-    private readonly IEventStore _eventStore;
-    private readonly PayrollReadDbContext _readDb;
-
-    public SalaryStructuresController(IEventStore eventStore, PayrollReadDbContext readDb)
-    {
-        _eventStore = eventStore;
-        _readDb = readDb;
-    }
-
     [HttpGet]
     public async Task<IActionResult> GetStructures([FromQuery] bool? isActive = null)
     {
-        var query = _readDb.SalaryStructures.AsQueryable();
+        IQueryable<SalaryStructureReadModel> query = readDb.SalaryStructures.AsQueryable();
         if (isActive.HasValue)
             query = query.Where(s => s.IsActive == isActive.Value);
 
-        var structures = await query.OrderBy(s => s.Name).ToListAsync();
-        return Ok(new { items = structures, total = structures.Count });
+        List<SalaryStructureReadModel> structures = await query.OrderBy(s => s.Name).ToListAsync();
+        return this.Ok(new { items = structures, total = structures.Count });
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetStructure(Guid id)
     {
-        var structure = await _readDb.SalaryStructures.FindAsync(id);
-        return structure == null ? NotFound() : Ok(structure);
+        SalaryStructureReadModel? structure = await readDb.SalaryStructures.FindAsync(id);
+        return structure == null ? this.NotFound() : this.Ok(structure);
     }
 
     [HttpPost]
     public async Task<IActionResult> CreateStructure([FromBody] CreateSalaryStructureRequest request)
     {
-        var structure = SalaryStructure.Create(
+        SalaryStructure structure = SalaryStructure.Create(
             Guid.NewGuid(),
             request.Name,
             request.BaseSalary,
@@ -48,15 +39,15 @@ public class SalaryStructuresController : ControllerBase
             request.Description
         );
 
-        await _eventStore.SaveAggregateAsync(structure);
-        return CreatedAtAction(nameof(GetStructure), new { id = structure.Id }, new { id = structure.Id });
+        await eventStore.SaveAggregateAsync(structure);
+        return this.CreatedAtAction(nameof(this.GetStructure), new { id = structure.Id }, new { id = structure.Id });
     }
 
     [HttpPost("{id:guid}/components")]
     public async Task<IActionResult> AddComponent(Guid id, [FromBody] AddComponentRequest request)
     {
-        var structure = await _eventStore.LoadAggregateAsync<SalaryStructure>(id);
-        if (structure == null) return NotFound();
+        SalaryStructure? structure = await eventStore.LoadAggregateAsync<SalaryStructure>(id);
+        if (structure == null) return this.NotFound();
 
         structure.AddComponent(
             request.Name,
@@ -66,15 +57,15 @@ public class SalaryStructuresController : ControllerBase
             request.IsTaxable
         );
 
-        await _eventStore.SaveAggregateAsync(structure);
-        return Ok();
+        await eventStore.SaveAggregateAsync(structure);
+        return this.Ok();
     }
 
     [HttpPost("{id:guid}/deductions")]
     public async Task<IActionResult> AddDeduction(Guid id, [FromBody] AddDeductionRequest request)
     {
-        var structure = await _eventStore.LoadAggregateAsync<SalaryStructure>(id);
-        if (structure == null) return NotFound();
+        SalaryStructure? structure = await eventStore.LoadAggregateAsync<SalaryStructure>(id);
+        if (structure == null) return this.NotFound();
 
         structure.AddDeduction(
             request.Name,
@@ -83,52 +74,43 @@ public class SalaryStructuresController : ControllerBase
             request.IsPercentage
         );
 
-        await _eventStore.SaveAggregateAsync(structure);
-        return Ok();
+        await eventStore.SaveAggregateAsync(structure);
+        return this.Ok();
     }
 }
 
 [ApiController]
 [Route("api/v1/payroll/payroll-runs")]
-public class PayrollRunsController : ControllerBase
+public class PayrollRunsController(IEventStore eventStore, PayrollReadDbContext readDb) : ControllerBase
 {
-    private readonly IEventStore _eventStore;
-    private readonly PayrollReadDbContext _readDb;
-
-    public PayrollRunsController(IEventStore eventStore, PayrollReadDbContext readDb)
-    {
-        _eventStore = eventStore;
-        _readDb = readDb;
-    }
-
     [HttpGet]
     public async Task<IActionResult> GetPayrollRuns(
         [FromQuery] int? year = null,
         [FromQuery] int? month = null,
         [FromQuery] string? status = null)
     {
-        var query = _readDb.PayrollRuns.AsQueryable();
+        IQueryable<PayrollRunReadModel> query = readDb.PayrollRuns.AsQueryable();
         if (year.HasValue) query = query.Where(r => r.Year == year.Value);
         if (month.HasValue) query = query.Where(r => r.Month == month.Value);
         if (!string.IsNullOrEmpty(status)) query = query.Where(r => r.Status == status);
 
-        var runs = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
-        return Ok(new { items = runs, total = runs.Count });
+        List<PayrollRunReadModel> runs = await query.OrderByDescending(r => r.CreatedAt).ToListAsync();
+        return this.Ok(new { items = runs, total = runs.Count });
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetPayrollRun(Guid id)
     {
-        var run = await _readDb.PayrollRuns.FindAsync(id);
-        return run == null ? NotFound() : Ok(run);
+        PayrollRunReadModel? run = await readDb.PayrollRuns.FindAsync(id);
+        return run == null ? this.NotFound() : this.Ok(run);
     }
 
     [HttpPost]
     public async Task<IActionResult> CreatePayrollRun([FromBody] CreatePayrollRunRequest request)
     {
-        var runNumber = $"PAY-{request.Year}{request.Month:D2}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+        string runNumber = $"PAY-{request.Year}{request.Month:D2}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
-        var run = PayrollRun.Create(
+        PayrollRun run = PayrollRun.Create(
             Guid.NewGuid(),
             runNumber,
             request.Year,
@@ -137,81 +119,81 @@ public class PayrollRunsController : ControllerBase
             request.Description
         );
 
-        await _eventStore.SaveAggregateAsync(run);
-        return CreatedAtAction(nameof(GetPayrollRun), new { id = run.Id }, new { id = run.Id, runNumber });
+        await eventStore.SaveAggregateAsync(run);
+        return this.CreatedAtAction(nameof(this.GetPayrollRun), new { id = run.Id }, new { id = run.Id, runNumber });
     }
 
     [HttpPost("{id:guid}/payslips")]
     public async Task<IActionResult> AddPayslip(Guid id, [FromBody] AddPayslipRequest request)
     {
-        var run = await _eventStore.LoadAggregateAsync<PayrollRun>(id);
-        if (run == null) return NotFound();
+        PayrollRun? run = await eventStore.LoadAggregateAsync<PayrollRun>(id);
+        if (run == null) return this.NotFound();
 
-        var payslipNumber = $"PS-{run.Year}{run.Month:D2}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
+        string payslipNumber = $"PS-{run.Year}{run.Month:D2}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
 
-        var payslipId = run.AddPayslip(
+        Guid payslipId = run.AddPayslip(
             payslipNumber,
             request.EmployeeId,
             request.EmployeeName,
             request.GrossAmount,
             request.TotalDeductions,
-            new List<PayslipLine>()
+            []
         );
 
-        await _eventStore.SaveAggregateAsync(run);
-        return Ok(new { payslipId, payslipNumber });
+        await eventStore.SaveAggregateAsync(run);
+        return this.Ok(new { payslipId, payslipNumber });
     }
 
     [HttpPost("{id:guid}/start-processing")]
     public async Task<IActionResult> StartProcessing(Guid id)
     {
-        var run = await _eventStore.LoadAggregateAsync<PayrollRun>(id);
-        if (run == null) return NotFound();
+        PayrollRun? run = await eventStore.LoadAggregateAsync<PayrollRun>(id);
+        if (run == null) return this.NotFound();
 
         run.StartProcessing();
-        await _eventStore.SaveAggregateAsync(run);
-        return Ok(new { id, status = "Processing" });
+        await eventStore.SaveAggregateAsync(run);
+        return this.Ok(new { id, status = "Processing" });
     }
 
     [HttpPost("{id:guid}/submit")]
     public async Task<IActionResult> Submit(Guid id)
     {
-        var run = await _eventStore.LoadAggregateAsync<PayrollRun>(id);
-        if (run == null) return NotFound();
+        PayrollRun? run = await eventStore.LoadAggregateAsync<PayrollRun>(id);
+        if (run == null) return this.NotFound();
 
         run.SubmitForApproval();
-        await _eventStore.SaveAggregateAsync(run);
-        return Ok(new { id, status = "PendingApproval" });
+        await eventStore.SaveAggregateAsync(run);
+        return this.Ok(new { id, status = "PendingApproval" });
     }
 
     [HttpPost("{id:guid}/approve")]
     public async Task<IActionResult> Approve(Guid id, [FromBody] ApprovePayrollRequest request)
     {
-        var run = await _eventStore.LoadAggregateAsync<PayrollRun>(id);
-        if (run == null) return NotFound();
+        PayrollRun? run = await eventStore.LoadAggregateAsync<PayrollRun>(id);
+        if (run == null) return this.NotFound();
 
         run.Approve(request.ApprovedByUserId);
-        await _eventStore.SaveAggregateAsync(run);
-        return Ok(new { id, status = "Approved" });
+        await eventStore.SaveAggregateAsync(run);
+        return this.Ok(new { id, status = "Approved" });
     }
 
     [HttpPost("{id:guid}/cancel")]
     public async Task<IActionResult> Cancel(Guid id, [FromBody] CancelPayrollRequest request)
     {
-        var run = await _eventStore.LoadAggregateAsync<PayrollRun>(id);
-        if (run == null) return NotFound();
+        PayrollRun? run = await eventStore.LoadAggregateAsync<PayrollRun>(id);
+        if (run == null) return this.NotFound();
 
         run.Cancel(request.Reason);
-        await _eventStore.SaveAggregateAsync(run);
-        return Ok(new { id, status = "Cancelled" });
+        await eventStore.SaveAggregateAsync(run);
+        return this.Ok(new { id, status = "Cancelled" });
     }
 
     [HttpGet("statistics")]
     public async Task<IActionResult> GetStatistics([FromQuery] int year)
     {
-        var runs = await _readDb.PayrollRuns.Where(r => r.Year == year).ToListAsync();
+        List<PayrollRunReadModel> runs = await readDb.PayrollRuns.Where(r => r.Year == year).ToListAsync();
         
-        return Ok(new
+        return this.Ok(new
         {
             year,
             totalRuns = runs.Count,
@@ -229,12 +211,8 @@ public class PayrollRunsController : ControllerBase
 
 [ApiController]
 [Route("api/v1/payroll/payslips")]
-public class PayslipsController : ControllerBase
+public class PayslipsController(PayrollReadDbContext readDb) : ControllerBase
 {
-    private readonly PayrollReadDbContext _readDb;
-
-    public PayslipsController(PayrollReadDbContext readDb) => _readDb = readDb;
-
     [HttpGet]
     public async Task<IActionResult> GetPayslips(
         [FromQuery] Guid? payrollRunId = null,
@@ -242,30 +220,30 @@ public class PayslipsController : ControllerBase
         [FromQuery] int? year = null,
         [FromQuery] int? month = null)
     {
-        var query = _readDb.Payslips.AsQueryable();
+        IQueryable<PayslipReadModel> query = readDb.Payslips.AsQueryable();
         if (payrollRunId.HasValue) query = query.Where(p => p.PayrollRunId == payrollRunId.Value);
         if (!string.IsNullOrEmpty(employeeId)) query = query.Where(p => p.EmployeeId == employeeId);
         if (year.HasValue) query = query.Where(p => p.Year == year.Value);
         if (month.HasValue) query = query.Where(p => p.Month == month.Value);
 
-        var payslips = await query.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ToListAsync();
-        return Ok(new { items = payslips, total = payslips.Count });
+        List<PayslipReadModel> payslips = await query.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ToListAsync();
+        return this.Ok(new { items = payslips, total = payslips.Count });
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetPayslip(Guid id)
     {
-        var payslip = await _readDb.Payslips.FindAsync(id);
-        return payslip == null ? NotFound() : Ok(payslip);
+        PayslipReadModel? payslip = await readDb.Payslips.FindAsync(id);
+        return payslip == null ? this.NotFound() : this.Ok(payslip);
     }
 
     [HttpGet("employee/{employeeId}")]
     public async Task<IActionResult> GetEmployeePayslips(string employeeId, [FromQuery] int? year = null)
     {
-        var query = _readDb.Payslips.Where(p => p.EmployeeId == employeeId);
+        IQueryable<PayslipReadModel> query = readDb.Payslips.Where(p => p.EmployeeId == employeeId);
         if (year.HasValue) query = query.Where(p => p.Year == year.Value);
 
-        var payslips = await query.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ToListAsync();
+        List<PayslipReadModel> payslips = await query.OrderByDescending(p => p.Year).ThenByDescending(p => p.Month).ToListAsync();
         
         var summary = new
         {
@@ -276,18 +254,24 @@ public class PayslipsController : ControllerBase
             payslips
         };
         
-        return Ok(summary);
+        return this.Ok(summary);
     }
 }
 
 #region Request DTOs
 
 public record CreateSalaryStructureRequest(string Name, decimal BaseSalary, string Currency, string? Description);
+
 public record AddComponentRequest(string Name, string Type, decimal Amount, bool IsPercentage, bool IsTaxable);
+
 public record AddDeductionRequest(string Name, string Type, decimal Amount, bool IsPercentage);
+
 public record CreatePayrollRunRequest(int Year, int Month, DateTime PaymentDate, string? Description);
+
 public record AddPayslipRequest(string EmployeeId, string EmployeeName, decimal GrossAmount, decimal TotalDeductions);
+
 public record ApprovePayrollRequest(string ApprovedByUserId);
+
 public record CancelPayrollRequest(string Reason);
 
 #endregion

@@ -27,7 +27,7 @@ public class ProcurementSuggestion : AggregateRoot<Guid>
         string reorderingRuleId,
         ProcurementCalculation calculation)
     {
-        var suggestion = new ProcurementSuggestion();
+        ProcurementSuggestion suggestion = new ProcurementSuggestion();
         suggestion.ApplyChange(new ProcurementSuggestionCreatedEvent(
             id,
             tenantId,
@@ -43,22 +43,20 @@ public class ProcurementSuggestion : AggregateRoot<Guid>
 
     public void Approve(string approvedBy)
     {
-        if (Status != ProcurementSuggestionStatus.Pending)
-            throw new InvalidOperationException($"Cannot approve suggestion in status {Status}");
+        if (this.Status != ProcurementSuggestionStatus.Pending)
+            throw new InvalidOperationException($"Cannot approve suggestion in status {this.Status}");
 
-        ApplyChange(new ProcurementSuggestionApprovedEvent(
-            Id,
+        this.ApplyChange(new ProcurementSuggestionApprovedEvent(this.Id,
             approvedBy,
             DateTime.UtcNow));
     }
 
     public void Reject(string rejectedBy, string reason)
     {
-        if (Status != ProcurementSuggestionStatus.Pending)
-            throw new InvalidOperationException($"Cannot reject suggestion in status {Status}");
+        if (this.Status != ProcurementSuggestionStatus.Pending)
+            throw new InvalidOperationException($"Cannot reject suggestion in status {this.Status}");
 
-        ApplyChange(new ProcurementSuggestionRejectedEvent(
-            Id,
+        this.ApplyChange(new ProcurementSuggestionRejectedEvent(this.Id,
             rejectedBy,
             reason,
             DateTime.UtcNow));
@@ -66,11 +64,10 @@ public class ProcurementSuggestion : AggregateRoot<Guid>
 
     public void MarkAsConverted(string purchaseOrderId)
     {
-        if (Status != ProcurementSuggestionStatus.Approved)
+        if (this.Status != ProcurementSuggestionStatus.Approved)
             throw new InvalidOperationException("Only approved suggestions can be converted to PO");
 
-        ApplyChange(new ProcurementSuggestionConvertedEvent(
-            Id,
+        this.ApplyChange(new ProcurementSuggestionConvertedEvent(this.Id,
             purchaseOrderId,
             DateTime.UtcNow));
     }
@@ -80,30 +77,29 @@ public class ProcurementSuggestion : AggregateRoot<Guid>
         switch (@event)
         {
             case ProcurementSuggestionCreatedEvent e:
-                Id = e.AggregateId;
-                TenantId = e.TenantId;
-                MaterialId = e.MaterialId;
-                WarehouseId = e.WarehouseId;
-                SuggestedQuantity = e.SuggestedQuantity;
-                SuggestedDate = e.SuggestedDate;
-                ReorderingRuleId = e.ReorderingRuleId;
-                Calculation = e.Calculation;
-                Status = ProcurementSuggestionStatus.Pending;
+                this.Id = e.AggregateId;
+                this.TenantId = e.TenantId;
+                this.MaterialId = e.MaterialId;
+                this.WarehouseId = e.WarehouseId;
+                this.SuggestedQuantity = e.SuggestedQuantity;
+                this.SuggestedDate = e.SuggestedDate;
+                this.ReorderingRuleId = e.ReorderingRuleId;
+                this.Calculation = e.Calculation;
+                this.Status = ProcurementSuggestionStatus.Pending;
                 break;
             case ProcurementSuggestionApprovedEvent:
-                Status = ProcurementSuggestionStatus.Approved;
+                this.Status = ProcurementSuggestionStatus.Approved;
                 break;
             case ProcurementSuggestionRejectedEvent:
-                Status = ProcurementSuggestionStatus.Rejected;
+                this.Status = ProcurementSuggestionStatus.Rejected;
                 break;
             case ProcurementSuggestionConvertedEvent e:
-                Status = ProcurementSuggestionStatus.Converted;
-                GeneratedPurchaseOrderId = e.PurchaseOrderId;
+                this.Status = ProcurementSuggestionStatus.Converted;
+                this.GeneratedPurchaseOrderId = e.PurchaseOrderId;
                 break;
         }
     }
 }
-
 
 public enum ProcurementSuggestionStatus
 {
@@ -140,7 +136,7 @@ public record ProcurementSuggestionCreatedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record ProcurementSuggestionApprovedEvent(
@@ -149,7 +145,7 @@ public record ProcurementSuggestionApprovedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record ProcurementSuggestionRejectedEvent(
@@ -159,7 +155,7 @@ public record ProcurementSuggestionRejectedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 
 public record ProcurementSuggestionConvertedEvent(
@@ -168,6 +164,6 @@ public record ProcurementSuggestionConvertedEvent(
     DateTime OccurredAt) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
-    public DateTime OccurredOn => OccurredAt;
+    public DateTime OccurredOn => this.OccurredAt;
 }
 

@@ -5,11 +5,9 @@ namespace ErpSystem.CRM.Infrastructure;
 
 #region Event Store DbContext
 
-public class CrmEventStoreDbContext : DbContext
+public class CrmEventStoreDbContext(DbContextOptions<CrmEventStoreDbContext> options) : DbContext(options)
 {
     public DbSet<EventStream> Events { get; set; } = null!;
-
-    public CrmEventStoreDbContext(DbContextOptions<CrmEventStoreDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,13 +23,11 @@ public class CrmEventStoreDbContext : DbContext
 
 #region Read DbContext
 
-public class CrmReadDbContext : DbContext
+public class CrmReadDbContext(DbContextOptions<CrmReadDbContext> options) : DbContext(options)
 {
     public DbSet<LeadReadModel> Leads { get; set; } = null!;
     public DbSet<OpportunityReadModel> Opportunities { get; set; } = null!;
     public DbSet<CampaignReadModel> Campaigns { get; set; } = null!;
-
-    public CrmReadDbContext(DbContextOptions<CrmReadDbContext> options) : base(options) { }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -137,7 +133,7 @@ public class CampaignReadModel
     public int TotalLeads { get; set; }
     public int ConvertedLeads { get; set; }
     public decimal TotalRevenue { get; set; }
-    public decimal ROI { get; set; }
+    public decimal Roi { get; set; }
     public decimal CostPerLead { get; set; }
     public decimal ConversionRate { get; set; }
     

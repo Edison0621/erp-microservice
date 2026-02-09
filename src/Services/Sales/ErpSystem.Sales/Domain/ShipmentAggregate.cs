@@ -8,7 +8,7 @@ public record ShipmentCreatedEvent(
     Guid ShipmentId,
     string ShipmentNumber,
     Guid SalesOrderId,
-    string SONumber,
+    string SoNumber,
     DateTime ShippedDate,
     string ShippedBy,
     string WarehouseId,
@@ -22,11 +22,11 @@ public class Shipment : AggregateRoot<Guid>
 {
     public string ShipmentNumber { get; private set; } = string.Empty;
     public Guid SalesOrderId { get; private set; }
-    public string SONumber { get; private set; } = string.Empty;
+    public string SoNumber { get; private set; } = string.Empty;
     public DateTime ShippedDate { get; private set; }
     public string ShippedBy { get; private set; } = string.Empty;
     public string WarehouseId { get; private set; } = string.Empty;
-    public List<ShipmentLine> Lines { get; private set; } = new();
+    public List<ShipmentLine> Lines { get; private set; } = [];
 
     public static Shipment Create(
         Guid id, 
@@ -38,7 +38,7 @@ public class Shipment : AggregateRoot<Guid>
         string warehouseId, 
         List<ShipmentLine> lines)
     {
-        var shipment = new Shipment();
+        Shipment shipment = new Shipment();
         shipment.ApplyChange(new ShipmentCreatedEvent(id, shipmentNumber, salesOrderId, soNumber, shippedDate, shippedBy, warehouseId, lines));
         return shipment;
     }
@@ -47,14 +47,14 @@ public class Shipment : AggregateRoot<Guid>
     {
         if (@event is ShipmentCreatedEvent e)
         {
-            Id = e.ShipmentId;
-            ShipmentNumber = e.ShipmentNumber;
-            SalesOrderId = e.SalesOrderId;
-            SONumber = e.SONumber;
-            ShippedDate = e.ShippedDate;
-            ShippedBy = e.ShippedBy;
-            WarehouseId = e.WarehouseId;
-            Lines = e.Lines;
+            this.Id = e.ShipmentId;
+            this.ShipmentNumber = e.ShipmentNumber;
+            this.SalesOrderId = e.SalesOrderId;
+            this.SoNumber = e.SoNumber;
+            this.ShippedDate = e.ShippedDate;
+            this.ShippedBy = e.ShippedBy;
+            this.WarehouseId = e.WarehouseId;
+            this.Lines = e.Lines;
         }
     }
 }

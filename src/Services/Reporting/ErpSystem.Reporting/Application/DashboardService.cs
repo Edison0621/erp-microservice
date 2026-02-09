@@ -11,20 +11,19 @@ public interface IDashboardService
     Task<IEnumerable<ActivityItem>> GetRecentActivitiesAsync(int count);
 }
 
-public class DashboardService : IDashboardService
+/// <summary>
+/// TODO DashboardService.
+/// Implements the <see cref="ErpSystem.Reporting.Application.IDashboardService" />
+/// </summary>
+/// <param name="logger">The logger.</param>
+/// <seealso cref="ErpSystem.Reporting.Application.IDashboardService" />
+public class DashboardService(ILogger<DashboardService> logger) : IDashboardService
 {
-    private readonly ILogger<DashboardService> _logger;
-
-    public DashboardService(ILogger<DashboardService> logger)
-    {
-        _logger = logger;
-    }
-
     public async Task<DashboardSummary> GetSummaryAsync()
     {
         // In production, aggregate from multiple services via Dapr
         // For demo, return sample data
-        _logger.LogInformation("Fetching dashboard summary");
+        logger.LogInformation("Fetching dashboard summary");
         
         return new DashboardSummary(
             TotalRevenue: 1250000.00m,
@@ -39,14 +38,14 @@ public class DashboardService : IDashboardService
 
     public async Task<IEnumerable<TrendDataPoint>> GetSalesTrendAsync(int days)
     {
-        var trend = new List<TrendDataPoint>();
-        var baseValue = 40000m;
-        var random = new Random(42); // Deterministic for demo
+        List<TrendDataPoint> trend = [];
+        decimal baseValue = 40000m;
+        Random random = new Random(42); // Deterministic for demo
 
         for (int i = days; i >= 0; i--)
         {
-            var date = DateTime.UtcNow.Date.AddDays(-i);
-            var variance = (decimal)(random.NextDouble() * 20000 - 10000);
+            DateTime date = DateTime.UtcNow.Date.AddDays(-i);
+            decimal variance = (decimal)(random.NextDouble() * 20000 - 10000);
             trend.Add(new TrendDataPoint(date, baseValue + variance, date.ToString("MM/dd")));
         }
 
@@ -79,14 +78,14 @@ public class DashboardService : IDashboardService
 
     public async Task<IEnumerable<ActivityItem>> GetRecentActivitiesAsync(int count)
     {
-        var activities = new List<ActivityItem>
-        {
+        List<ActivityItem> activities =
+        [
             new(DateTime.UtcNow.AddMinutes(-5), "Sales", "OrderCreated", "New order SO-2024-1847 created", "user-001"),
             new(DateTime.UtcNow.AddMinutes(-12), "Inventory", "StockReceived", "Received 500 units of MAT-001", "user-002"),
             new(DateTime.UtcNow.AddMinutes(-25), "Production", "OrderCompleted", "Production order PO-2024-089 completed", "user-003"),
             new(DateTime.UtcNow.AddMinutes(-45), "Procurement", "POApproved", "Purchase order approved for Supplier-005", "user-004"),
             new(DateTime.UtcNow.AddHours(-1), "Finance", "InvoiceGenerated", "Invoice INV-2024-3421 generated", "user-001")
-        };
+        ];
 
         return activities.Take(count);
     }
