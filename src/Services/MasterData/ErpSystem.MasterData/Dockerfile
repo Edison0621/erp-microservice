@@ -1,21 +1,15 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
+EXPOSE 8080
+ENV ASPNETCORE_HTTP_PORTS=8080
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY ["Services/MasterData/ErpSystem.MasterData/ErpSystem.MasterData.csproj", "Services/MasterData/ErpSystem.MasterData/"]
-COPY ["BuildingBlocks/ErpSystem.BuildingBlocks/ErpSystem.BuildingBlocks.csproj", "BuildingBlocks/ErpSystem.BuildingBlocks/"]
-RUN dotnet restore "Services/MasterData/ErpSystem.MasterData/ErpSystem.MasterData.csproj"
 COPY . .
-WORKDIR "/src/Services/MasterData/ErpSystem.MasterData"
-RUN dotnet build "ErpSystem.MasterData.csproj" -c Release -o /app/build
-
-FROM build AS publish
-RUN dotnet publish "ErpSystem.MasterData.csproj" -c Release -o /app/publish
+RUN dotnet build "Services/MasterData/ErpSystem.MasterData/ErpSystem.MasterData.csproj" -c Release -o /app/build
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/build .
 ENTRYPOINT ["dotnet", "ErpSystem.MasterData.dll"]
