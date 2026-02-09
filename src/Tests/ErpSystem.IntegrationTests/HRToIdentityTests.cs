@@ -31,9 +31,9 @@ public class HrToIdentityTests : IntegrationTestBase
             hrApp = this.CreateHrApp(testEventBus);
 
             IMediator mediatorHr = hrApp.Services.GetRequiredService<IMediator>();
-            IMediator mediatorIdentity = identityApp.Services.GetRequiredService<IMediator>();
+            //IMediator mediatorIdentity = identityApp.Services.GetRequiredService<IMediator>();
             
-            Guid employeeId = Guid.NewGuid(); // We'll bypass Guid.NewGuid() in Hire to use a controlled one if needed, 
+            //Guid employeeId = Guid.NewGuid(); // We'll bypass Guid.NewGuid() in Hire to use a controlled one if needed, 
                                              // but HireEmployeeCommand generates its own. 
                                              // Wait! Handle(HireEmployeeCommand) uses Guid.NewGuid().
                                              

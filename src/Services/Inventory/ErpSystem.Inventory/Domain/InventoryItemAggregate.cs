@@ -104,6 +104,7 @@ public class InventoryItem : AggregateRoot<Guid>
     public decimal TotalValue => this._batches.Sum(b => b.RemainingQuantity * b.UnitCost);
 
     // Track active reservations for validation
+    // ReSharper disable once CollectionNeverQueried.Local
     private readonly List<Guid> _activeReservations = [];
 
     public static InventoryItem Create(Guid id, string warehouseId, string binId, string materialId)

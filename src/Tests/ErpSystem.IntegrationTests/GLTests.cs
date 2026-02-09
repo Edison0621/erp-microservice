@@ -27,7 +27,7 @@ public class GlTests : IntegrationTestBase
                 "3001", "Owner Equity", AccountType.Equity, AccountClass.NonCurrent, null, BalanceType.Credit, "USD"));
 
             // 3. Define & Open Period
-            Guid periodId = await mediator.Send(new DefineFinancialPeriodCommand(2026, 1, new DateTime(2026, 1, 1), new DateTime(2026, 1, 31)));
+            await mediator.Send(new DefineFinancialPeriodCommand(2026, 1, new DateTime(2026, 1, 1), new DateTime(2026, 1, 31)));
             // Period is open by default upon definition in our simplified logic? 
             // Checking Domain logic: "Define" sets IsClosed=false. So yes, open.
 

@@ -24,6 +24,7 @@ public class DaprInventoryQueryService(DaprClient daprClient) : IInventoryQueryS
             response.Available);
     }
 
+    // ReSharper disable once ClassNeverInstantiated.Local
     private record InventoryResponse(decimal OnHand, decimal Reserved, decimal Available);
 }
 

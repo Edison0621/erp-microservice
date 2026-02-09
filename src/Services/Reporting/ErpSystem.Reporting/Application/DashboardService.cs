@@ -42,7 +42,7 @@ public class DashboardService(ReportingDbContext db, ILogger<DashboardService> l
             ActiveProductionOrders: summary.ActiveProductionOrders);
     }
 
-    public async Task<IEnumerable<TrendDataPoint>> GetSalesTrendAsync(int days)
+    public Task<IEnumerable<TrendDataPoint>> GetSalesTrendAsync(int days)
     {
         List<TrendDataPoint> trend = [];
         decimal baseValue = 40000m;
@@ -55,34 +55,34 @@ public class DashboardService(ReportingDbContext db, ILogger<DashboardService> l
             trend.Add(new TrendDataPoint(date, baseValue + variance, date.ToString("MM/dd")));
         }
 
-        return trend;
+        return Task.FromResult<IEnumerable<TrendDataPoint>>(trend);
     }
 
-    public async Task<IEnumerable<InventoryStatusItem>> GetInventoryStatusAsync()
+    public Task<IEnumerable<InventoryStatusItem>> GetInventoryStatusAsync()
     {
-        return new List<InventoryStatusItem>
+        return Task.FromResult<IEnumerable<InventoryStatusItem>>(new List<InventoryStatusItem>
         {
             new("Raw Materials", 1250, 45, 3, 890000m),
             new("Work in Progress", 320, 12, 0, 450000m),
             new("Finished Goods", 890, 28, 5, 1200000m),
             new("Spare Parts", 2100, 89, 12, 340000m),
             new("Packaging", 560, 23, 2, 120000m)
-        };
+        });
     }
 
-    public async Task<IEnumerable<TopProductItem>> GetTopProductsAsync(int count)
+    public Task<IEnumerable<TopProductItem>> GetTopProductsAsync(int count)
     {
-        return new List<TopProductItem>
+        return Task.FromResult(new List<TopProductItem>
         {
             new("PRD-001", "Industrial Motor A500", 234, 156000m),
             new("PRD-002", "Control Panel CP-200", 189, 142000m),
             new("PRD-003", "Hydraulic Pump HP-50", 156, 98000m),
             new("PRD-004", "Sensor Array SA-100", 312, 87000m),
             new("PRD-005", "Power Supply PS-750", 278, 72000m)
-        }.Take(count);
+        }.Take(count));
     }
 
-    public async Task<IEnumerable<ActivityItem>> GetRecentActivitiesAsync(int count)
+    public Task<IEnumerable<ActivityItem>> GetRecentActivitiesAsync(int count)
     {
         List<ActivityItem> activities =
         [
@@ -93,6 +93,6 @@ public class DashboardService(ReportingDbContext db, ILogger<DashboardService> l
             new(DateTime.UtcNow.AddHours(-1), "Finance", "InvoiceGenerated", "Invoice INV-2024-3421 generated", "user-001")
         ];
 
-        return activities.Take(count);
+        return Task.FromResult(activities.Take(count));
     }
 }

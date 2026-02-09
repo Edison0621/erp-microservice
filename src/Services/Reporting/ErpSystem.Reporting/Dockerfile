@@ -6,6 +6,9 @@ EXPOSE 443
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY ["Services/Reporting/ErpSystem.Reporting/ErpSystem.Reporting.csproj", "Services/Reporting/ErpSystem.Reporting/"]
+COPY ["Services/Sales/ErpSystem.Sales/ErpSystem.Sales.csproj", "Services/Sales/ErpSystem.Sales/"]
+COPY ["Services/Inventory/ErpSystem.Inventory/ErpSystem.Inventory.csproj", "Services/Inventory/ErpSystem.Inventory/"]
+COPY ["Services/Procurement/ErpSystem.Procurement/ErpSystem.Procurement.csproj", "Services/Procurement/ErpSystem.Procurement/"]
 COPY ["BuildingBlocks/ErpSystem.BuildingBlocks/ErpSystem.BuildingBlocks.csproj", "BuildingBlocks/ErpSystem.BuildingBlocks/"]
 RUN dotnet restore "Services/Reporting/ErpSystem.Reporting/ErpSystem.Reporting.csproj"
 COPY . .

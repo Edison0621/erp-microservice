@@ -124,7 +124,7 @@ namespace ErpSystem.Mrp.Infrastructure
 
         public async Task Handle(Domain.ReorderingRuleQuantitiesUpdatedEvent e, CancellationToken ct)
         {
-            ReorderingRuleReadModel? rule = await db.ReorderingRules.FindAsync([e.AggregateId, ct], cancellationToken: ct);
+            ReorderingRuleReadModel? rule = await db.ReorderingRules.FindAsync(new object[] { e.AggregateId }, ct);
             if (rule != null)
             {
                 rule.MinQuantity = e.MinQuantity;
@@ -136,7 +136,7 @@ namespace ErpSystem.Mrp.Infrastructure
 
         public async Task Handle(Domain.ReorderingRuleLeadTimeUpdatedEvent e, CancellationToken ct)
         {
-            ReorderingRuleReadModel? rule = await db.ReorderingRules.FindAsync([e.AggregateId, ct], cancellationToken: ct);
+            ReorderingRuleReadModel? rule = await db.ReorderingRules.FindAsync(new object[] { e.AggregateId }, ct);
             if (rule != null)
             {
                 rule.LeadTimeDays = e.LeadTimeDays;
@@ -146,7 +146,7 @@ namespace ErpSystem.Mrp.Infrastructure
 
         public async Task Handle(Domain.ReorderingRuleActivatedEvent e, CancellationToken ct)
         {
-            ReorderingRuleReadModel? rule = await db.ReorderingRules.FindAsync([e.AggregateId, ct], cancellationToken: ct);
+            ReorderingRuleReadModel? rule = await db.ReorderingRules.FindAsync(new object[] { e.AggregateId }, ct);
             if (rule != null)
             {
                 rule.IsActive = true;
@@ -156,7 +156,7 @@ namespace ErpSystem.Mrp.Infrastructure
 
         public async Task Handle(Domain.ReorderingRuleDeactivatedEvent e, CancellationToken ct)
         {
-            ReorderingRuleReadModel? rule = await db.ReorderingRules.FindAsync([e.AggregateId, ct], cancellationToken: ct);
+            ReorderingRuleReadModel? rule = await db.ReorderingRules.FindAsync(new object[] { e.AggregateId }, ct);
             if (rule != null)
             {
                 rule.IsActive = false;

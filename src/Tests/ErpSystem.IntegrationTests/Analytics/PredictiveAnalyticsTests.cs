@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FluentAssertions;
 using ErpSystem.Analytics.Infrastructure;
 
@@ -32,6 +33,7 @@ public class PredictiveAnalyticsTests
     }
 
     [Fact]
+    [SuppressMessage("ReSharper", "CollectionNeverUpdated.Local")]
     public void DemandForecast_Should_Handle_Empty_History()
     {
         // Setup
