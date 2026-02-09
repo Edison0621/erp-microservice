@@ -1,0 +1,68 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "dapr-run-sales",
+            "type": "shell",
+            "command": "dapr run --app-id sales-api --app-port 5006 --dapr-http-port 3506 --components-path ./components",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": [
+                    {
+                        "regexp": ".",
+                        "file": 1,
+                        "location": 2,
+                        "message": 3
+                    }
+                ],
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Starting Dapr",
+                    "endsPattern": "You're up and running"
+                }
+            }
+        },
+        {
+            "label": "dapr-run-crm",
+            "type": "shell",
+            "command": "dapr run --app-id crm-api --app-port 5009 --dapr-http-port 3509 --components-path ./components",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": [
+                    {
+                        "regexp": ".",
+                        "file": 1,
+                        "location": 2,
+                        "message": 3
+                    }
+                ],
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Starting Dapr",
+                    "endsPattern": "You're up and running"
+                }
+            }
+        },
+        {
+            "label": "dapr-run-identity",
+            "type": "shell",
+            "command": "dapr run --app-id identity-api --app-port 5001 --dapr-http-port 3501 --components-path ./components",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": [
+                    {
+                        "regexp": ".",
+                        "file": 1,
+                        "location": 2,
+                        "message": 3
+                    }
+                ],
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Starting Dapr",
+                    "endsPattern": "You're up and running"
+                }
+            }
+        }
+    ]
+}

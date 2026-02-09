@@ -19,7 +19,7 @@ public class Program
             options.UseNpgsql(builder.Configuration.GetConnectionString("salesdb")));
 
         // Dapr
-        // builder.Services.AddDaprClient();
+        builder.Services.AddDaprClient();
 
         // BuildingBlocks - EventBus first
         builder.Services.AddDaprEventBus();
@@ -31,7 +31,7 @@ public class Program
         builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 
         // Register the main EventStore
-        builder.Services.AddScoped<IEventStore>(sp => 
+        builder.Services.AddScoped<IEventStore>(sp =>
             new EventStore(
                 sp.GetRequiredService<SalesEventStoreDbContext>(),
                 sp.GetRequiredService<IPublisher>(),
@@ -63,8 +63,8 @@ public class Program
             app.UseSwaggerUI();
         }
 
+        app.MapSubscribeHandler(); // Dapr subscription
         app.MapControllers();
-        // app.MapSubscribeHandler(); // Dapr subscription
 
         app.Run();
     }

@@ -23,13 +23,16 @@ public class Program
         builder.Services.AddDbContext<IdentityReadDbContext>(options =>
             options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+        // Dapr
+        builder.Services.AddDaprClient();
+
         // MediatR
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Application.HrIntegrationEventHandler).Assembly));
         builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
         builder.Services.AddDaprEventBus();
 
         // Register the main EventStore
-        builder.Services.AddScoped<IEventStore>(sp => 
+        builder.Services.AddScoped<IEventStore>(sp =>
             new EventStore(
                 sp.GetRequiredService<EventStoreDbContext>(),
                 sp.GetRequiredService<IPublisher>(),
@@ -51,9 +54,9 @@ public class Program
 
         app.UseHttpsRedirection();
         app.UseAuthorization();
+        app.MapSubscribeHandler(); // Dapr subscription
         app.MapControllers();
         app.MapHealthChecks("/health");
-        // app.MapSubscribeHandler(); // Dapr subscription
 
         // Auto-migrate (for demo)
         if (!app.Environment.IsEnvironment("Testing"))

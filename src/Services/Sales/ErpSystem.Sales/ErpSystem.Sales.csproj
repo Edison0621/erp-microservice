@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\ErpSystem.BuildingBlocks\ErpSystem.BuildingBlocks.csproj" />
-    <ProjectReference Include="..\..\CRM\ErpSystem.CRM\ErpSystem.CRM.csproj" />
   </ItemGroup>
 
   <ItemGroup>

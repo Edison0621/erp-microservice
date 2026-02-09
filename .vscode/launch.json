@@ -1,0 +1,47 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Dapr: Sales API",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "dapr-run-sales",
+            "program": "${workspaceFolder}/src/Services/Sales/ErpSystem.Sales/bin/Debug/net10.0/ErpSystem.Sales.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Services/Sales/ErpSystem.Sales",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "sourceFileMap": {
+                "/Views": "${workspaceFolder}/Views"
+            }
+        },
+        {
+            "name": "Dapr: CRM API",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "dapr-run-crm",
+            "program": "${workspaceFolder}/src/Services/CRM/ErpSystem.CRM/bin/Debug/net10.0/ErpSystem.CRM.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Services/CRM/ErpSystem.CRM",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Dapr: Identity API",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "dapr-run-identity",
+            "program": "${workspaceFolder}/src/Services/Identity/ErpSystem.Identity/bin/Debug/net10.0/ErpSystem.Identity.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/Services/Identity/ErpSystem.Identity",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        }
+    ]
+}

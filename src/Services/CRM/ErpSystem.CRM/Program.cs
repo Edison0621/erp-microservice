@@ -20,6 +20,8 @@ public class Program
         builder.Services.AddDbContext<CrmReadDbContext>(options =>
             options.UseNpgsql(builder.Configuration.GetConnectionString("crmdb")));
 
+        // Dapr
+        builder.Services.AddDaprClient();
         // Dapr EventBus
         builder.Services.AddDaprEventBus();
 
@@ -65,8 +67,8 @@ public class Program
             app.UseSwaggerUI();
         }
 
+        app.MapSubscribeHandler(); // Dapr subscription
         app.MapControllers();
-        // app.MapSubscribeHandler(); // Dapr subscription
 
         app.Run();
     }

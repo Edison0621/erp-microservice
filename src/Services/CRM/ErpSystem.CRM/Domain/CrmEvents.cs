@@ -1,16 +1,8 @@
+using ErpSystem.BuildingBlocks.Contracts;
+
 namespace ErpSystem.CRM.Domain;
 
-public class CrmIntegrationEvents
+// Re-export or alias if needed, but better to use BuildingBlocks.Contracts directly
+public class CrmIntegrationEvents : ErpSystem.BuildingBlocks.Contracts.CrmIntegrationEvents
 {
-    public record OpportunityWonIntegrationEvent(
-        Guid OpportunityId,
-        string OpportunityNumber,
-        string OpportunityName,
-        string? CustomerId,
-        string? CustomerName,
-        decimal FinalValue,
-        string Currency,
-        string? AssignedToUserId,
-        DateTime WonDate
-    ) : MediatR.INotification;
 }

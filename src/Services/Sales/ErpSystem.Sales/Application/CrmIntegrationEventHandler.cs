@@ -1,5 +1,5 @@
 using MediatR;
-using ErpSystem.CRM.Domain;
+using ErpSystem.BuildingBlocks.Contracts;
 using ErpSystem.Sales.Domain;
 
 namespace ErpSystem.Sales.Application;
