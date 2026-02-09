@@ -1,7 +1,26 @@
 using ErpSystem.Settings.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Dapr Client
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:settingsdb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    } catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("settingsdb");
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -10,7 +29,13 @@ builder.Services.AddSwaggerGen();
 
 // Database
 builder.Services.AddDbContext<SettingsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("settingsdb")));
+    options.UseNpgsql(connectionString));
+
+// Dapr
+builder.Services.AddDaprClient();
+
+// BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 
 // CORS
 builder.Services.AddCors(options =>

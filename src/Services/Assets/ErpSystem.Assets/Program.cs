@@ -3,16 +3,41 @@ using MediatR;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.Assets.Infrastructure;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Dapr Client
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try
+    {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:assetsdb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    }
+    catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("assetsdb");
+
 // Persistence
 builder.Services.AddDbContext<AssetsEventStoreDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("assetsdb")));
+    options.UseNpgsql(connectionString));
 builder.Services.AddDbContext<AssetsReadDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("assetsdb")));
+    options.UseNpgsql(connectionString));
+
+// Dapr
+builder.Services.AddDaprClient();
 
 // BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 builder.Services.AddDaprEventBus();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly));
 builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());

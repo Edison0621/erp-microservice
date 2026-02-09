@@ -1,0 +1,43 @@
+apiVersion: dapr.io/v1alpha1
+kind: Resiliency
+metadata:
+  name: erp-resiliency
+spec:
+  policies:
+    timeouts:
+      general: 5s
+      long: 30s
+    
+    retries:
+      pubsubRetry:
+        policy: constant
+        duration: 2s
+        maxRetries: 3
+      
+      serviceRetry:
+        policy: exponential
+        maxInterval: 15s
+        maxRetries: 5
+    
+    circuitBreakers:
+      dbCircuitBreaker:
+        maxRequests: 1
+        interval: 8s
+        timeout: 20s
+        trip: concurrency > 10
+
+  targets:
+    apps:
+      sales-api:
+        timeout: general
+        retry: serviceRetry
+      crm-api:
+        timeout: general
+        retry: serviceRetry
+    
+    components:
+      pubsub:
+        retry: pubsubRetry
+      statestore:
+        retry: pubsubRetry
+        circuitBreaker: dbCircuitBreaker

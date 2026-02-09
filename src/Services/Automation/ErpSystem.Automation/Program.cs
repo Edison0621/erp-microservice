@@ -5,10 +5,31 @@ using ErpSystem.Automation.Domain;
 using ErpSystem.Automation.Infrastructure;
 using ErpSystem.Automation.Application;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Dapr Client
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try
+    {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:automationdb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    }
+    catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("automationdb");
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -17,9 +38,13 @@ builder.Services.AddSwaggerGen();
 
 // Databases
 builder.Services.AddDbContext<AutomationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("automationdb")));
+    options.UseNpgsql(connectionString));
 
-// Event Sourcing & MediatR & EventBus
+// Dapr
+builder.Services.AddDaprClient();
+
+// BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 builder.Services.AddDaprEventBus();
 
 // MediatR - MUST be before IPublisher!

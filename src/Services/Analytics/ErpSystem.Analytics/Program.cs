@@ -5,8 +5,29 @@ using ErpSystem.Analytics.Infrastructure;
 using ErpSystem.Analytics.Application;
 using ErpSystem.Analytics.Infrastructure.BackgroundJobs;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Dapr Client
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try
+    {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:analyticsdb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    }
+    catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("analyticsdb");
 
 // Add services to the container.
 builder.Services.AddSignalR();
@@ -16,9 +37,13 @@ builder.Services.AddSwaggerGen();
 
 // Databases
 builder.Services.AddDbContext<AnalyticsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("analyticsdb")));
+    options.UseNpgsql(connectionString));
 
-// Event Sourcing & MediatR & EventBus
+// Dapr
+builder.Services.AddDaprClient();
+
+// BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 builder.Services.AddDaprEventBus();
 
 // MediatR - MUST be before IPublisher!
@@ -28,7 +53,7 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Forec
 builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 
 // Register the main EventStore
-builder.Services.AddScoped<IEventStore>(sp => 
+builder.Services.AddScoped<IEventStore>(sp =>
     new EventStore(
         sp.GetRequiredService<AnalyticsDbContext>(),
         sp.GetRequiredService<IPublisher>(),

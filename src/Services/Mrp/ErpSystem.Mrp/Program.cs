@@ -4,8 +4,29 @@ using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Mrp.Infrastructure;
 using ErpSystem.Mrp.Application;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Dapr Client for secrets
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try
+    {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:mrpdb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    }
+    catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("mrpdb");
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -14,9 +35,10 @@ builder.Services.AddSwaggerGen();
 
 // Databases
 builder.Services.AddDbContext<MrpDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("mrpdb")));
+    options.UseNpgsql(connectionString));
 
-// Event Sourcing & MediatR & EventBus
+// BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 builder.Services.AddDaprEventBus();
 
 // MediatR - MUST be before IPublisher!

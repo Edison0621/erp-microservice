@@ -8,7 +8,7 @@ namespace ErpSystem.Identity;
 
 public class Program
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -17,11 +17,30 @@ public class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
+        // Dapr Client
+        var daprClient = new Dapr.Client.DaprClientBuilder().Build();
+
+        // Fetch connection string from Dapr Secrets with retry
+        string? connectionString = null;
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:identitydb");
+                connectionString = secrets.Values.FirstOrDefault();
+                if (!string.IsNullOrEmpty(connectionString)) break;
+            }
+            catch { await Task.Delay(1000); }
+        }
+
+        if (string.IsNullOrEmpty(connectionString))
+            connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
         // DB
         builder.Services.AddDbContext<EventStoreDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(connectionString));
         builder.Services.AddDbContext<IdentityReadDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+            options.UseNpgsql(connectionString));
 
         // Dapr
         builder.Services.AddDaprClient();

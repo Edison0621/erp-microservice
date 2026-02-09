@@ -3,6 +3,8 @@ using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.CRM.Infrastructure;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 namespace ErpSystem.CRM;
 
@@ -14,15 +16,35 @@ public class Program
 
         // Add service defaults
 
+        // Dapr Client
+        var daprClient = new DaprClientBuilder().Build();
+
+        // Fetch connection string from Dapr Secrets with retry
+        string? connectionString = null;
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:crmdb");
+                connectionString = secrets.Values.FirstOrDefault();
+                if (!string.IsNullOrEmpty(connectionString)) break;
+            }
+            catch { await Task.Delay(1000); }
+        }
+
+        if (string.IsNullOrEmpty(connectionString))
+            connectionString = builder.Configuration.GetConnectionString("crmdb");
+
         // Persistence
         builder.Services.AddDbContext<CrmEventStoreDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("crmdb")));
+            options.UseNpgsql(connectionString));
         builder.Services.AddDbContext<CrmReadDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("crmdb")));
+            options.UseNpgsql(connectionString));
 
         // Dapr
         builder.Services.AddDaprClient();
-        // Dapr EventBus
+        // BuildingBlocks
+        builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
         builder.Services.AddDaprEventBus();
 
         // MediatR - MUST be before IPublisher!

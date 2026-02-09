@@ -3,6 +3,8 @@ using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Finance.Infrastructure;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 namespace ErpSystem.Finance;
 
@@ -12,6 +14,25 @@ public class Program
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+        // Dapr Client
+        var daprClient = new DaprClientBuilder().Build();
+
+        // Fetch connection string from Dapr Secrets with retry
+        string? connectionString = null;
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:financedb");
+                connectionString = secrets.Values.FirstOrDefault();
+                if (!string.IsNullOrEmpty(connectionString)) break;
+            }
+            catch { await Task.Delay(1000); }
+        }
+
+        if (string.IsNullOrEmpty(connectionString))
+            connectionString = builder.Configuration.GetConnectionString("financedb");
+
         // Add services to the container.
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
@@ -19,11 +40,15 @@ public class Program
 
         // Databases
         builder.Services.AddDbContext<FinanceEventStoreDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("financedb")));
+            options.UseNpgsql(connectionString));
         builder.Services.AddDbContext<FinanceReadDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("financedb")));
+            options.UseNpgsql(connectionString));
 
-        // EventBus (needed by EventStore)
+        // Dapr
+        builder.Services.AddDaprClient();
+
+        // BuildingBlocks
+        builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
         builder.Services.AddDaprEventBus();
 
         // MediatR - Exclude Infrastructure handlers that require MongoDB
@@ -38,7 +63,7 @@ public class Program
         builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 
         // EventStore (needed by GLCommandHandler)
-        builder.Services.AddScoped<IEventStore>(sp => 
+        builder.Services.AddScoped<IEventStore>(sp =>
             new EventStore(
                 sp.GetRequiredService<FinanceEventStoreDbContext>(),
                 sp.GetRequiredService<IPublisher>(),
@@ -58,6 +83,7 @@ public class Program
         }
 
         app.UseAuthorization();
+        app.MapSubscribeHandler(); // Dapr subscription
         app.MapControllers();
 
         // Ensure databases created

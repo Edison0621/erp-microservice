@@ -3,6 +3,8 @@ using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Sales.Infrastructure;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 namespace ErpSystem.Sales;
 
@@ -12,16 +14,36 @@ public class Program
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+        // Dapr Client (needed for secrets)
+        var daprClient = new DaprClientBuilder().Build();
+
+        // Fetch connection string from Dapr Secrets with simple retry
+        string? connectionString = null;
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:salesdb");
+                connectionString = secrets.Values.FirstOrDefault();
+                if (!string.IsNullOrEmpty(connectionString)) break;
+            }
+            catch { await Task.Delay(1000); }
+        }
+
+        if (string.IsNullOrEmpty(connectionString))
+            connectionString = builder.Configuration.GetConnectionString("salesdb");
+
         // Persistence
         builder.Services.AddDbContext<SalesEventStoreDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("salesdb")));
+            options.UseNpgsql(connectionString));
         builder.Services.AddDbContext<SalesReadDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("salesdb")));
+            options.UseNpgsql(connectionString));
 
         // Dapr
         builder.Services.AddDaprClient();
 
-        // BuildingBlocks - EventBus first
+        // BuildingBlocks
+        builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
         builder.Services.AddDaprEventBus();
 
         // MediatR - MUST be before IPublisher!

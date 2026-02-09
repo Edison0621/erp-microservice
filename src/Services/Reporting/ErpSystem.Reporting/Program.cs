@@ -1,8 +1,29 @@
 using ErpSystem.Reporting.Application;
 using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.EventBus;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Dapr Client
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try
+    {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:reportingdb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    }
+    catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("reportingdb");
 
 // Add services
 builder.Services.AddControllers();
@@ -14,9 +35,13 @@ builder.Services.AddSwaggerGen(c =>
 
 // Databases
 builder.Services.AddDbContext<ReportingDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("reportingdb")));
+    options.UseNpgsql(connectionString));
 
-// EventBus & MediatR (For Projections)
+// Dapr
+builder.Services.AddDaprClient();
+
+// BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 builder.Services.AddDaprEventBus();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DashboardService).Assembly));
 

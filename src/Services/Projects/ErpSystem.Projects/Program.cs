@@ -3,16 +3,41 @@ using MediatR;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.Projects.Infrastructure;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Dapr Client
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try
+    {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:projectsdb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    }
+    catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("projectsdb");
+
 // Persistence
 builder.Services.AddDbContext<ProjectsEventStoreDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("projectsdb")));
+    options.UseNpgsql(connectionString));
 builder.Services.AddDbContext<ProjectsReadDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("projectsdb")));
+    options.UseNpgsql(connectionString));
 
-// BuildingBlocks - EventBus first
+// Dapr
+builder.Services.AddDaprClient();
+
+// BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 builder.Services.AddDaprEventBus();
 
 // MediatR - MUST be before IPublisher!

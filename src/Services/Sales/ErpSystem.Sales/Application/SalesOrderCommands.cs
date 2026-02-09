@@ -2,6 +2,7 @@ using MediatR;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Sales.Domain;
+using ErpSystem.BuildingBlocks.Dapr;
 
 namespace ErpSystem.Sales.Application;
 
@@ -17,7 +18,7 @@ public record ConfirmSoCommand(Guid OrderId, string WarehouseId) : IRequest<bool
 
 public record CancelSoCommand(Guid OrderId, string Reason) : IRequest<bool>;
 
-public class SalesOrderCommandHandler(EventStoreRepository<SalesOrder> repo, IEventBus eventBus) :
+public class SalesOrderCommandHandler(EventStoreRepository<SalesOrder> repo, IEventBus eventBus, IDaprConfigurationProvider config) :
     IRequestHandler<CreateSoCommand, Guid>,
     IRequestHandler<ConfirmSoCommand, bool>,
     IRequestHandler<CancelSoCommand, bool>
@@ -26,7 +27,15 @@ public class SalesOrderCommandHandler(EventStoreRepository<SalesOrder> repo, IEv
     {
         Guid id = Guid.NewGuid();
         string soNumber = $"SO-{DateTime.UtcNow:yyyyMMdd}-{id.ToString()[..4]}";
+        // Fetch tax rate from Dapr Configuration
+        string? taxRateStr = await config.GetConfigurationAsync("configstore", "SalesTaxRate", ct);
+        decimal taxRate = decimal.TryParse(taxRateStr, out var tr) ? tr : 0.05m; // Default 5%
+
         SalesOrder so = SalesOrder.Create(id, soNumber, request.CustomerId, request.CustomerName, request.OrderDate, request.Currency, request.Lines);
+
+        // Log tax application (hypothetical business logic)
+        // so.ApplyTax(taxRate); 
+
         await repo.SaveAsync(so);
         return id;
     }

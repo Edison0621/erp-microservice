@@ -3,6 +3,8 @@ using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.HR.Infrastructure;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 namespace ErpSystem.HR;
 
@@ -12,16 +14,36 @@ public class Program
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+        // Dapr Client
+        var daprClient = new DaprClientBuilder().Build();
+
+        // Fetch connection string from Dapr Secrets with retry
+        string? connectionString = null;
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:hrdb");
+                connectionString = secrets.Values.FirstOrDefault();
+                if (!string.IsNullOrEmpty(connectionString)) break;
+            }
+            catch { await Task.Delay(1000); }
+        }
+
+        if (string.IsNullOrEmpty(connectionString))
+            connectionString = builder.Configuration.GetConnectionString("hrdb");
+
         // Persistence
         builder.Services.AddDbContext<HrEventStoreDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("hrdb")));
+            options.UseNpgsql(connectionString));
         builder.Services.AddDbContext<HrReadDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("hrdb")));
+            options.UseNpgsql(connectionString));
 
         // Dapr
-        // builder.Services.AddDaprClient();
+        builder.Services.AddDaprClient();
 
-        // BuildingBlocks - EventBus first
+        // BuildingBlocks
+        builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
         builder.Services.AddDaprEventBus();
 
         // MediatR - MUST be before IPublisher!
@@ -31,7 +53,7 @@ public class Program
         builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 
         // Register the main EventStore
-        builder.Services.AddScoped<IEventStore>(sp => 
+        builder.Services.AddScoped<IEventStore>(sp =>
             new EventStore(
                 sp.GetRequiredService<HrEventStoreDbContext>(),
                 sp.GetRequiredService<IPublisher>(),
@@ -63,8 +85,8 @@ public class Program
             app.UseSwaggerUI();
         }
 
+        app.MapSubscribeHandler(); // Dapr subscription
         app.MapControllers();
-        // app.MapSubscribeHandler(); // Dapr subscription
 
         app.Run();
     }

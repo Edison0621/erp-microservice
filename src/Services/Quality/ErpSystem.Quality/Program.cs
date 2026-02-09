@@ -5,20 +5,44 @@ using ErpSystem.Quality.Domain;
 using ErpSystem.Quality.Infrastructure;
 using ErpSystem.Quality.Application;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// Dapr Client
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try
+    {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:qualitydb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    }
+    catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("qualitydb");
 
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Databases (Using Finance DB for simplicity or specific Quality DB)
-// For Iteration 03, we use PG for Quality
+// Databases
 builder.Services.AddDbContext<QualityDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("qualitydb")));
+    options.UseNpgsql(connectionString));
 
-// Event Sourcing & MediatR & EventBus
+// Dapr
+builder.Services.AddDaprClient();
+
+// BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 builder.Services.AddDaprEventBus();
 
 // MediatR - MUST be before IPublisher!

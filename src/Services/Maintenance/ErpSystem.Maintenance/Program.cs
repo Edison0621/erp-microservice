@@ -3,16 +3,41 @@ using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Maintenance.Infrastructure;
 using MediatR;
+using Dapr.Client;
+using ErpSystem.BuildingBlocks;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Dapr Client
+var daprClient = new DaprClientBuilder().Build();
+
+// Fetch connection string from Dapr Secrets with retry
+string? connectionString = null;
+for (int i = 0; i < 5; i++)
+{
+    try
+    {
+        var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:maintenancedb");
+        connectionString = secrets.Values.FirstOrDefault();
+        if (!string.IsNullOrEmpty(connectionString)) break;
+    }
+    catch { await Task.Delay(1000); }
+}
+
+if (string.IsNullOrEmpty(connectionString))
+    connectionString = builder.Configuration.GetConnectionString("maintenancedb");
+
 // Persistence
 builder.Services.AddDbContext<MaintenanceEventStoreDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("maintenancedb")));
+    options.UseNpgsql(connectionString));
 builder.Services.AddDbContext<MaintenanceReadDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("maintenancedb")));
+    options.UseNpgsql(connectionString));
+
+// Dapr
+builder.Services.AddDaprClient();
 
 // BuildingBlocks
+builder.Services.AddBuildingBlocks(new[] { typeof(Program).Assembly });
 builder.Services.AddDaprEventBus();
 
 // MediatR - MUST be before IPublisher!
@@ -22,7 +47,7 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(Pro
 builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 
 // Register the main EventStore
-builder.Services.AddScoped<IEventStore>(sp => 
+builder.Services.AddScoped<IEventStore>(sp =>
     new EventStore(
         sp.GetRequiredService<MaintenanceEventStoreDbContext>(),
         sp.GetRequiredService<IPublisher>(),

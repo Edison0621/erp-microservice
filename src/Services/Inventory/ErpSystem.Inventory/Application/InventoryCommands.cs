@@ -2,6 +2,7 @@ using MediatR;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.Inventory.Domain;
 using ErpSystem.Inventory.Infrastructure;
+using Dapr.Client;
 using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.Inventory.Application;
@@ -57,7 +58,7 @@ public record AdjustStockCommand(
     string PerformedBy
 ) : IRequest<bool>;
 
-public class InventoryCommandHandler(EventStoreRepository<InventoryItem> repo, InventoryReadDbContext readDb) :
+public class InventoryCommandHandler(EventStoreRepository<InventoryItem> repo, InventoryReadDbContext readDb, DaprClient daprClient) :
     IRequestHandler<ReceiveStockCommand, Guid>,
     IRequestHandler<IssueStockCommand, bool>,
     IRequestHandler<ReserveStockCommand, Guid>,
@@ -70,7 +71,7 @@ public class InventoryCommandHandler(EventStoreRepository<InventoryItem> repo, I
         // Find existing or start a new one
         InventoryItemReadModel? itemModel = await readDb.InventoryItems
             .FirstOrDefaultAsync(x => x.WarehouseId == request.WarehouseId && x.BinId == request.BinId && x.MaterialId == request.MaterialId, ct);
-        
+
         InventoryItem item;
         if (itemModel == null)
         {
@@ -100,9 +101,15 @@ public class InventoryCommandHandler(EventStoreRepository<InventoryItem> repo, I
 
     public async Task<bool> Handle(IssueStockCommand request, CancellationToken ct)
     {
+        string lockKey = $"inventory-lock-{request.InventoryItemId}";
+#pragma warning disable DAPR0001 // Dapr Lock API is experimental
+        await using var daprLock = await daprClient.Lock("lockstore", lockKey, request.PerformedBy, 30, ct);
+#pragma warning restore DAPR0001
+        if (!daprLock.Success) throw new Exception("Could not acquire inventory lock");
+
         InventoryItem? item = await repo.LoadAsync(request.InventoryItemId);
         if (item == null) throw new KeyNotFoundException("Inventory item not found");
-        
+
         item.IssueStock(request.Quantity, request.SourceType, request.SourceId, request.PerformedBy, request.RelatedReservationId);
         await repo.SaveAsync(item);
         return true;
@@ -131,6 +138,12 @@ public class InventoryCommandHandler(EventStoreRepository<InventoryItem> repo, I
 
     public async Task<bool> Handle(AdjustStockCommand request, CancellationToken ct)
     {
+        string lockKey = $"inventory-lock-{request.InventoryItemId}";
+#pragma warning disable DAPR0001 // Dapr Lock API is experimental
+        await using var daprLock = await daprClient.Lock("lockstore", lockKey, request.PerformedBy, 30, ct);
+#pragma warning restore DAPR0001
+        if (!daprLock.Success) throw new Exception("Could not acquire inventory lock");
+
         InventoryItem? item = await repo.LoadAsync(request.InventoryItemId);
         if (item == null) throw new KeyNotFoundException("Inventory item not found");
 

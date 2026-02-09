@@ -4,6 +4,7 @@ using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.BuildingBlocks.EventBus;
 using ErpSystem.Inventory.Domain.Services;
 using MediatR;
+using Dapr.Client;
 
 namespace ErpSystem.Inventory;
 
@@ -13,21 +14,40 @@ public class Program
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+        // Dapr Client
+        var daprClient = new DaprClientBuilder().Build();
+
+        // Fetch connection string from Dapr Secrets with retry
+        string? connectionString = null;
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                var secrets = await daprClient.GetSecretAsync("localsecretstore", "connectionstrings:inventorydb");
+                connectionString = secrets.Values.FirstOrDefault();
+                if (!string.IsNullOrEmpty(connectionString)) break;
+            }
+            catch { await Task.Delay(1000); }
+        }
+
+        if (string.IsNullOrEmpty(connectionString))
+            connectionString = builder.Configuration.GetConnectionString("inventorydb");
+
         // Persistence
         builder.Services.AddDbContext<InventoryEventStoreDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("inventorydb")));
+            options.UseNpgsql(connectionString));
         builder.Services.AddDbContext<InventoryReadDbContext>(options =>
-            options.UseNpgsql(builder.Configuration.GetConnectionString("inventorydb")));
+            options.UseNpgsql(connectionString));
 
         // Dapr
-        // builder.Services.AddDaprClient();
+        builder.Services.AddDaprClient();
 
         // BuildingBlocks
         builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
         builder.Services.AddDaprEventBus();
 
         // Register the main EventStore
-        builder.Services.AddScoped<IEventStore>(sp => 
+        builder.Services.AddScoped<IEventStore>(sp =>
             new EventStore(
                 sp.GetRequiredService<InventoryEventStoreDbContext>(),
                 sp.GetRequiredService<IPublisher>(),
@@ -66,7 +86,7 @@ public class Program
         }
 
         app.MapControllers();
-        // app.MapSubscribeHandler(); // Dapr subscription
+        app.MapSubscribeHandler(); // Dapr subscription
 
         app.Run();
     }

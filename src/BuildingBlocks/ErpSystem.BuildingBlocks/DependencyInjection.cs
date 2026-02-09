@@ -25,6 +25,10 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();
 
+        // 4. Dapr Providers
+        services.AddScoped<Dapr.IDaprSecretsProvider, Dapr.DaprSecretsProvider>();
+        services.AddScoped<Dapr.IDaprConfigurationProvider, Dapr.DaprConfigurationProvider>();
+
         return services;
     }
 }
