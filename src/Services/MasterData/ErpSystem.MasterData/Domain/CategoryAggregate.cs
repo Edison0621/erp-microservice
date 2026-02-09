@@ -35,7 +35,7 @@ public class MaterialCategory : AggregateRoot<Guid>
     {
         if (level > 5) throw new ArgumentException("Category depth cannot exceed 5 levels");
         
-        MaterialCategory category = new MaterialCategory();
+        MaterialCategory category = new();
         category.ApplyChange(new CategoryCreatedEvent(id, code, name, parentId, level));
         return category;
     }

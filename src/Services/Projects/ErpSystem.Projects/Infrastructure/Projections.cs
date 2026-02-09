@@ -18,7 +18,7 @@ public class ProjectProjectionHandler(ProjectsReadDbContext db) :
 {
     public async Task Handle(ProjectCreatedEvent e, CancellationToken ct)
     {
-        ProjectReadModel project = new ProjectReadModel
+        ProjectReadModel project = new()
         {
             Id = e.ProjectId,
             ProjectNumber = e.ProjectNumber,
@@ -52,7 +52,7 @@ public class ProjectProjectionHandler(ProjectsReadDbContext db) :
 
     public async Task Handle(TaskAddedEvent e, CancellationToken ct)
     {
-        TaskReadModel task = new TaskReadModel
+        TaskReadModel task = new()
         {
             Id = e.TaskId,
             ProjectId = e.ProjectId,
@@ -153,7 +153,7 @@ public class TimesheetProjectionHandler(ProjectsReadDbContext db) :
 {
     public async Task Handle(TimesheetCreatedEvent e, CancellationToken ct)
     {
-        TimesheetReadModel timesheet = new TimesheetReadModel
+        TimesheetReadModel timesheet = new()
         {
             Id = e.TimesheetId,
             TimesheetNumber = e.TimesheetNumber,

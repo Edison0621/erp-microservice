@@ -6,10 +6,10 @@ using ErpSystem.Procurement.Domain;
 namespace ErpSystem.Procurement.Application;
 
 public record CreatePoCommand(
-    string SupplierId, 
-    string SupplierName, 
-    DateTime OrderDate, 
-    string Currency, 
+    string SupplierId,
+    string SupplierName,
+    DateTime OrderDate,
+    string Currency,
     List<PurchaseOrderLine> Lines) : IRequest<Guid>;
 
 public record SubmitPoCommand(Guid PoId) : IRequest<bool>;
@@ -19,6 +19,8 @@ public record ApprovePoCommand(Guid PoId, string ApprovedBy, string Comment) : I
 public record SendPoCommand(Guid PoId, string SentBy, string Method) : IRequest<bool>;
 
 public record RecordReceiptCommand(Guid PoId, DateTime ReceiptDate, string ReceivedBy, List<ReceiptLine> Lines) : IRequest<Guid>;
+
+public record ReturnGoodsCommand(Guid PoId, List<ReturnLine> Lines, string Reason) : IRequest<Guid>;
 
 public record ClosePoCommand(Guid PoId, string Reason) : IRequest<bool>;
 
@@ -30,6 +32,7 @@ public class PoCommandHandler(EventStoreRepository<PurchaseOrder> repo, IEventBu
     IRequestHandler<ApprovePoCommand, bool>,
     IRequestHandler<SendPoCommand, bool>,
     IRequestHandler<RecordReceiptCommand, Guid>,
+    IRequestHandler<ReturnGoodsCommand, Guid>,
     IRequestHandler<ClosePoCommand, bool>,
     IRequestHandler<CancelPoCommand, bool>
 {
@@ -73,24 +76,32 @@ public class PoCommandHandler(EventStoreRepository<PurchaseOrder> repo, IEventBu
     {
         PurchaseOrder? po = await repo.LoadAsync(request.PoId);
         if (po == null) throw new KeyNotFoundException("PO not found");
-        
+
         Guid receiptId = Guid.NewGuid();
+        string receiptNumber = $"GR-{DateTime.UtcNow:yyyyMMdd}-{receiptId.ToString()[..4]}";
         po.RecordReceipt(receiptId, request.ReceiptDate, request.ReceivedBy, request.Lines);
         await repo.SaveAsync(po);
 
-        // Publish Integration Event for Inventory
-        ProcurementIntegrationEvents.GoodsReceivedIntegrationEvent integrationEvent = new ProcurementIntegrationEvents.GoodsReceivedIntegrationEvent(
-            po.Id, 
-            po.SupplierId, 
+        // Publish Integration Event for Inventory and Finance
+        ProcurementIntegrationEvents.GoodsReceivedIntegrationEvent integrationEvent = new(
+            po.Id,
+            receiptId,
+            receiptNumber,
+            po.SupplierId,
             request.ReceiptDate,
-            request.Lines.Select(l => new ProcurementIntegrationEvents.GoodsReceivedItem(
-                po.Lines.First(pl => pl.LineNumber == l.LineNumber).MaterialId,
-                l.WarehouseId,
-                l.LocationId,
-                l.Quantity
-            )).ToList()
+            request.Lines.Select(l =>
+            {
+                PurchaseOrderLine poLine = po.Lines.First(pl => pl.LineNumber == l.LineNumber);
+                return new ProcurementIntegrationEvents.GoodsReceivedItem(
+                    poLine.MaterialId,
+                    l.WarehouseId,
+                    l.LocationId,
+                    l.Quantity,
+                    poLine.UnitPrice
+                );
+            }).ToList()
         );
-        
+
         await eventBus.PublishAsync(integrationEvent, ct);
 
         return receiptId;
@@ -112,5 +123,40 @@ public class PoCommandHandler(EventStoreRepository<PurchaseOrder> repo, IEventBu
         po.Cancel(request.Reason);
         await repo.SaveAsync(po);
         return true;
+    }
+
+    public async Task<Guid> Handle(ReturnGoodsCommand request, CancellationToken ct)
+    {
+        PurchaseOrder? po = await repo.LoadAsync(request.PoId);
+        if (po == null) throw new KeyNotFoundException("PO not found");
+
+        Guid returnId = Guid.NewGuid();
+        string returnNumber = $"RTN-{DateTime.UtcNow:yyyyMMdd}-{returnId.ToString()[..4]}";
+        // Domain change
+        po.ReturnGoods(returnId.ToString(), request.Lines, request.Reason);
+        await repo.SaveAsync(po);
+
+        // Integration Event
+        ProcurementIntegrationEvents.GoodsReturnedIntegrationEvent integrationEvent = new(
+            po.Id,
+            returnId,
+            returnNumber,
+            po.SupplierId,
+            DateTime.UtcNow,
+            request.Lines.Select(l =>
+            {
+                PurchaseOrderLine poLine = po.Lines.First(pl => pl.LineNumber == l.LineNumber);
+                return new ProcurementIntegrationEvents.GoodsReturnedItem(
+                    poLine.MaterialId,
+                    l.Quantity,
+                    poLine.UnitPrice
+                );
+            }).ToList(),
+            request.Reason
+        );
+
+        await eventBus.PublishAsync(integrationEvent, ct);
+
+        return returnId;
     }
 }

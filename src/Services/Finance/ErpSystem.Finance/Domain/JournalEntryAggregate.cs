@@ -71,7 +71,7 @@ public class JournalEntry : AggregateRoot<Guid>
 
     public static JournalEntry Create(Guid id, string docNumber, DateTime transactionDate, DateTime postingDate, string description, JournalEntrySource source, string? referenceNo)
     {
-        JournalEntry je = new JournalEntry();
+        JournalEntry je = new();
         je.ApplyChange(new JournalEntryCreatedEvent(id, docNumber, transactionDate, postingDate, description, source, referenceNo));
         return je;
     }

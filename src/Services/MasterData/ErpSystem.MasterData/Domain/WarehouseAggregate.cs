@@ -23,7 +23,7 @@ public class Warehouse : AggregateRoot<Guid>
 
     public static Warehouse Create(Guid id, string code, string name, string type)
     {
-        Warehouse warehouse = new Warehouse();
+        Warehouse warehouse = new();
         warehouse.ApplyChange(new WarehouseCreatedEvent(id, code, name, type));
         return warehouse;
     }

@@ -80,7 +80,7 @@ public class Supplier : AggregateRoot<Guid>
 
     public static Supplier Create(Guid id, string code, string name, SupplierType type, string creditCode)
     {
-        Supplier supplier = new Supplier();
+        Supplier supplier = new();
         supplier.ApplyChange(new SupplierCreatedEvent(id, code, name, type, creditCode));
         return supplier;
     }

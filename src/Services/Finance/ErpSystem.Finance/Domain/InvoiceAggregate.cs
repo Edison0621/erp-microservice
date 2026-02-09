@@ -33,7 +33,7 @@ public record InvoiceLine(string LineNumber, string? MaterialId, string Descript
 }
 
 // --- Events ---
-public record InvoiceCreatedEvent(Guid InvoiceId, string InvoiceNumber, InvoiceType Type, string PartyId, string PartyName, DateTime InvoiceDate, DateTime DueDate, string Currency) : IDomainEvent
+public record InvoiceCreatedEvent(Guid InvoiceId, string InvoiceNumber, InvoiceType Type, string PartyId, string PartyName, DateTime InvoiceDate, DateTime DueDate, string Currency, Guid? StatementId) : IDomainEvent
 {
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
@@ -74,18 +74,20 @@ public class Invoice : AggregateRoot<Guid>
     public DateTime DueDate { get; private set; }
     public string Currency { get; private set; } = "CNY";
     public InvoiceStatus Status { get; private set; }
-    
+
     public decimal TotalAmount { get; private set; }
     public decimal PaidAmount { get; private set; }
     public decimal OutstandingAmount => this.TotalAmount - this.PaidAmount;
 
+    public Guid? StatementId { get; private set; } // Link to Reconciliation Statement
+
     private readonly List<InvoiceLine> _lines = [];
     public IReadOnlyCollection<InvoiceLine> Lines => this._lines.AsReadOnly();
 
-    public static Invoice Create(Guid id, string number, InvoiceType type, string partyId, string partyName, DateTime invoiceDate, DateTime dueDate, string currency)
+    public static Invoice Create(Guid id, string number, InvoiceType type, string partyId, string partyName, DateTime invoiceDate, DateTime dueDate, string currency, Guid? statementId = null)
     {
-        Invoice invoice = new Invoice();
-        invoice.ApplyChange(new InvoiceCreatedEvent(id, number, type, partyId, partyName, invoiceDate, dueDate, currency));
+        Invoice invoice = new();
+        invoice.ApplyChange(new InvoiceCreatedEvent(id, number, type, partyId, partyName, invoiceDate, dueDate, currency, statementId));
         return invoice;
     }
 
@@ -102,41 +104,39 @@ public class Invoice : AggregateRoot<Guid>
         if (this.Status != InvoiceStatus.Draft)
             throw new InvalidOperationException("Invoice is already issued or cancelled.");
         if (this.TotalAmount <= 0)
+            // ... (rest of method)
             throw new InvalidOperationException("Invoice total must be greater than zero.");
 
         this.ApplyChange(new InvoiceIssuedEvent(this.Id));
     }
 
-    public void RecordPayment(Guid paymentId, decimal amount, DateTime date, PaymentMethod method, string? reference)
-    {
-        if (this.Status == InvoiceStatus.Cancelled || this.Status == InvoiceStatus.WrittenOff || this.Status == InvoiceStatus.Draft)
-            throw new InvalidOperationException("Cannot record payment for this invoice status.");
-        
-        if (amount <= 0) throw new ArgumentException("Payment amount must be positive.");
-        
-        // Allow overpayment? For now, no.
-        if (this.PaidAmount + amount > this.TotalAmount) 
-            throw new InvalidOperationException($"Payment amount {amount} exceeds outstanding amount {this.OutstandingAmount}.");
+    // ... (rest of class)
 
-        this.ApplyChange(new PaymentRecordedEvent(this.Id, paymentId, amount, date, method, reference));
+    public void RecordPayment(Guid paymentId, decimal amount, DateTime paymentDate, PaymentMethod method, string? referenceNo)
+    {
+        if (this.Status != InvoiceStatus.Issued && this.Status != InvoiceStatus.PartiallyPaid)
+            throw new InvalidOperationException("Cannot record payment on non-issued invoice.");
+
+        if (this.PaidAmount + amount > this.TotalAmount)
+            throw new InvalidOperationException("Payment amount exceeds outstanding amount.");
+
+        this.ApplyChange(new PaymentRecordedEvent(this.Id, paymentId, amount, paymentDate, method, referenceNo));
     }
 
     public void WriteOff(string reason)
     {
-        if (this.Status != InvoiceStatus.Issued && this.Status != InvoiceStatus.PartiallyPaid)
-            throw new InvalidOperationException("Only issued or partially paid invoices can be written off.");
+        if (this.Status == InvoiceStatus.FullyPaid || this.Status == InvoiceStatus.Cancelled)
+            throw new InvalidOperationException("Cannot write off paid or cancelled invoice.");
 
         this.ApplyChange(new InvoiceStatusChangedEvent(this.Id, InvoiceStatus.WrittenOff, reason));
     }
 
     public void Cancel()
     {
-        if (this.Status != InvoiceStatus.Draft && this.Status != InvoiceStatus.Issued)
-            throw new InvalidOperationException("Cannot cancel an invoice that has payments or is already closed.");
-        if (this.PaidAmount > 0)
-            throw new InvalidOperationException("Cannot cancel an invoice with payments.");
+        if (this.Status == InvoiceStatus.FullyPaid || this.Status == InvoiceStatus.WrittenOff)
+            throw new InvalidOperationException("Cannot cancel paid or written-off invoice.");
 
-        this.ApplyChange(new InvoiceStatusChangedEvent(this.Id, InvoiceStatus.Cancelled, "Manual Cancel"));
+        this.ApplyChange(new InvoiceStatusChangedEvent(this.Id, InvoiceStatus.Cancelled, null));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -152,6 +152,7 @@ public class Invoice : AggregateRoot<Guid>
                 this.InvoiceDate = e.InvoiceDate;
                 this.DueDate = e.DueDate;
                 this.Currency = e.Currency;
+                this.StatementId = e.StatementId;
                 this.Status = InvoiceStatus.Draft;
                 break;
             case InvoiceLinesUpdatedEvent e:
@@ -164,7 +165,7 @@ public class Invoice : AggregateRoot<Guid>
                 break;
             case PaymentRecordedEvent e:
                 this.PaidAmount += e.Amount;
-                this.Status = Math.Abs(this.TotalAmount - this.PaidAmount) < 0.001m ? InvoiceStatus.FullyPaid : InvoiceStatus.PartiallyPaid; // Tolerance for decimal
+                this.Status = Math.Abs(this.TotalAmount - this.PaidAmount) < 0.001m ? InvoiceStatus.FullyPaid : InvoiceStatus.PartiallyPaid;
 
                 break;
             case InvoiceStatusChangedEvent e:
@@ -173,3 +174,4 @@ public class Invoice : AggregateRoot<Guid>
         }
     }
 }
+

@@ -17,7 +17,7 @@ public class GlProjections(FinanceReadDbContext db) :
 {
     public async Task Handle(AccountCreatedEvent e, CancellationToken ct)
     {
-        AccountReadModel account = new AccountReadModel
+        AccountReadModel account = new()
         {
             AccountId = e.AccountId,
             Code = e.Code,
@@ -46,7 +46,7 @@ public class GlProjections(FinanceReadDbContext db) :
 
     public async Task Handle(JournalEntryCreatedEvent e, CancellationToken ct)
     {
-        JournalEntryReadModel je = new JournalEntryReadModel
+        JournalEntryReadModel je = new()
         {
             JournalEntryId = e.JournalEntryId,
             DocumentNumber = e.DocumentNumber,
@@ -115,7 +115,7 @@ public class GlProjections(FinanceReadDbContext db) :
 
     public async Task Handle(FinancialPeriodDefinedEvent e, CancellationToken ct)
     {
-        FinancialPeriodReadModel period = new FinancialPeriodReadModel
+        FinancialPeriodReadModel period = new()
         {
             PeriodId = e.PeriodId,
             Year = e.Year,

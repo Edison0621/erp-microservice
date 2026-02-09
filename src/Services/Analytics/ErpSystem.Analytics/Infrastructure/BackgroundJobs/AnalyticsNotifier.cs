@@ -11,7 +11,7 @@ public class AnalyticsNotifier(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using PeriodicTimer timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        using PeriodicTimer timer = new(TimeSpan.FromSeconds(5));
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {

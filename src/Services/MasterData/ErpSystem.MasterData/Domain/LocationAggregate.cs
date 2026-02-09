@@ -27,7 +27,7 @@ public class WarehouseLocation : AggregateRoot<Guid>
 
     public static WarehouseLocation Create(Guid id, Guid warehouseId, string code, string name, string type)
     {
-        WarehouseLocation location = new WarehouseLocation();
+        WarehouseLocation location = new();
         location.ApplyChange(new LocationCreatedEvent(id, warehouseId, code, name, type));
         return location;
     }

@@ -11,7 +11,7 @@ public class BomProjections(MasterDataReadDbContext context) :
 {
     public async Task Handle(BomCreatedEvent e, CancellationToken ct)
     {
-        BomReadModel model = new BomReadModel
+        BomReadModel model = new()
         {
             BomId = e.BomId,
             ParentMaterialId = e.ParentMaterialId,

@@ -11,7 +11,7 @@ public class HrProjections(HrReadDbContext readDb) :
 {
     public async Task Handle(EmployeeHiredEvent n, CancellationToken ct)
     {
-        EmployeeReadModel model = new EmployeeReadModel
+        EmployeeReadModel model = new()
         {
             Id = n.EmployeeId,
             EmployeeNumber = n.EmployeeNumber,

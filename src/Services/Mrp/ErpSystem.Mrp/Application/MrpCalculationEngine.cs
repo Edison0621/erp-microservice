@@ -1,5 +1,7 @@
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.Mrp.Domain;
+using ErpSystem.Mrp.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.Mrp.Application;
 
@@ -11,6 +13,7 @@ public class MrpCalculationEngine(
     IInventoryQueryService inventoryQuery,
     IProcurementQueryService procurementQuery,
     IProductionQueryService productionQuery,
+    MrpDbContext dbContext,
     ILogger<MrpCalculationEngine> logger)
 {
     /// <summary>
@@ -24,13 +27,13 @@ public class MrpCalculationEngine(
 
         // Step 1: Get current inventory status
         InventoryStatus inventory = await inventoryQuery.GetInventoryStatus(rule.WarehouseId, rule.MaterialId);
-        
+
         // Step 2: Get incoming procurement
         decimal incomingProcurement = await procurementQuery.GetIncomingQuantity(rule.MaterialId, rule.WarehouseId);
-        
+
         // Step 3: Get incoming production
         decimal incomingProduction = await productionQuery.GetPlannedOutputQuantity(rule.MaterialId, rule.WarehouseId);
-        
+
         // Step 4: Calculate forecasted available
         decimal forecastedAvailable = inventory.Available + incomingProcurement + incomingProduction;
 
@@ -51,7 +54,7 @@ public class MrpCalculationEngine(
 
         // Step 6: Calculate suggested quantity
         decimal suggestedQuantity = rule.MaxQuantity - forecastedAvailable;
-        
+
         // Use reorder quantity if specified
         if (rule.ReorderQuantity > 0)
         {
@@ -62,7 +65,7 @@ public class MrpCalculationEngine(
         DateTime suggestedDate = DateTime.UtcNow.AddDays(rule.LeadTimeDays);
 
         // Step 8: Create calculation record
-        ProcurementCalculation calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new(
             CurrentOnHand: inventory.OnHand,
             Reserved: inventory.Reserved,
             Available: inventory.Available,
@@ -102,9 +105,7 @@ public class MrpCalculationEngine(
         logger.LogInformation("Running MRP calculation for all active rules in tenant {TenantId}", tenantId);
 
         List<ProcurementSuggestion> suggestions = [];
-        
-        // This would typically load from a read model
-        // For now, this is a placeholder
+
         List<ReorderingRule> activeRules = await this.GetActiveReorderingRules(tenantId);
 
         foreach (ReorderingRule rule in activeRules)
@@ -119,7 +120,7 @@ public class MrpCalculationEngine(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, 
+                logger.LogError(ex,
                     "Failed to calculate MRP for rule {RuleId}, Material {MaterialId}",
                     rule.Id, rule.MaterialId);
             }
@@ -134,9 +135,35 @@ public class MrpCalculationEngine(
 
     private async Task<List<ReorderingRule>> GetActiveReorderingRules(string tenantId)
     {
-        // TODO: Implement read model query
-        // This is a placeholder
-        return [];
+        List<ReorderingRuleReadModel> rules = await dbContext.ReorderingRules
+            .Where(r => r.TenantId == tenantId && r.IsActive)
+            .ToListAsync();
+
+        return rules.Select(r =>
+        {
+            // Reconstruct aggregate for calculation
+            ReorderingRule rule = (ReorderingRule)Activator.CreateInstance(typeof(ReorderingRule), true)!;
+            Type type = typeof(ReorderingRule);
+
+            // Set Id (defined on AggregateRoot)
+            type.BaseType?.GetProperty("Id")?.SetValue(rule, r.Id);
+
+            // Set other properties (most are private set in ReorderingRule)
+            void SetPrivate(string name, object? value) =>
+                type.GetProperty(name, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)?
+                    .GetSetMethod(true)?.Invoke(rule, [value]);
+
+            SetPrivate("TenantId", r.TenantId);
+            SetPrivate("MaterialId", r.MaterialId);
+            SetPrivate("WarehouseId", r.WarehouseId);
+            SetPrivate("MinQuantity", r.MinQuantity);
+            SetPrivate("MaxQuantity", r.MaxQuantity);
+            SetPrivate("ReorderQuantity", r.ReorderQuantity);
+            SetPrivate("LeadTimeDays", r.LeadTimeDays);
+            SetPrivate("IsActive", r.IsActive);
+
+            return rule;
+        }).ToList();
     }
 }
 

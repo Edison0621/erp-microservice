@@ -13,7 +13,7 @@ public class SalaryStructureProjectionHandler(PayrollReadDbContext db) :
 {
     public async Task Handle(SalaryStructureCreatedEvent e, CancellationToken ct)
     {
-        SalaryStructureReadModel structure = new SalaryStructureReadModel
+        SalaryStructureReadModel structure = new()
         {
             Id = e.StructureId,
             Name = e.Name,
@@ -75,7 +75,7 @@ public class PayrollRunProjectionHandler(PayrollReadDbContext db) :
 {
     public async Task Handle(PayrollRunCreatedEvent e, CancellationToken ct)
     {
-        PayrollRunReadModel run = new PayrollRunReadModel
+        PayrollRunReadModel run = new()
         {
             Id = e.PayrollRunId,
             RunNumber = e.RunNumber,
@@ -104,7 +104,7 @@ public class PayrollRunProjectionHandler(PayrollReadDbContext db) :
     {
         PayrollRunReadModel? run = await db.PayrollRuns.FindAsync([e.PayrollRunId], ct);
         
-        PayslipReadModel payslip = new PayslipReadModel
+        PayslipReadModel payslip = new()
         {
             Id = e.PayslipId,
             PayrollRunId = e.PayrollRunId,

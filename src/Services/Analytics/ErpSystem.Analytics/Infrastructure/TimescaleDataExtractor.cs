@@ -16,11 +16,11 @@ public class TimescaleDataExtractor(IConfiguration configuration)
     {
         List<TimeSeriesData> result = [];
 
-        using NpgsqlConnection conn = new NpgsqlConnection(this._connectionString);
+        using NpgsqlConnection conn = new(this._connectionString);
         await conn.OpenAsync();
 
         // Query the inventory_transactions_ts hypertable
-        using NpgsqlCommand cmd = new NpgsqlCommand(
+        using NpgsqlCommand cmd = new(
             @"SELECT 
                 time_bucket('1 day', time) AS bucket,
                 ABS(SUM(quantity_change)) AS total_usage
@@ -54,11 +54,11 @@ public class TimescaleDataExtractor(IConfiguration configuration)
     {
         List<TimeSeriesData> result = [];
 
-        using NpgsqlConnection conn = new NpgsqlConnection(this._connectionString);
+        using NpgsqlConnection conn = new(this._connectionString);
         await conn.OpenAsync();
 
         // Query cost movements or a dedicated financial transaction hypertable
-        using NpgsqlCommand cmd = new NpgsqlCommand(
+        using NpgsqlCommand cmd = new(
             @"SELECT 
                 time_bucket('1 day', time) AS bucket,
                 SUM(total_value) AS daily_value
@@ -89,13 +89,13 @@ public class TimescaleDataExtractor(IConfiguration configuration)
     {
         List<MaterialStatsDto> result = [];
 
-        using NpgsqlConnection conn = new NpgsqlConnection(this._connectionString);
+        using NpgsqlConnection conn = new(this._connectionString);
         await conn.OpenAsync();
 
         try
         {
              // Use TimescaleDB Toolkit functions to access the aggregates
-            using NpgsqlCommand cmd = new NpgsqlCommand(
+            using NpgsqlCommand cmd = new(
                 @"SELECT 
                     hour,
                     material_id,

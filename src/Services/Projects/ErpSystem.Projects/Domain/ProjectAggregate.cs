@@ -319,7 +319,7 @@ public class Project : AggregateRoot<Guid>
         if (endDate <= startDate)
             throw new ArgumentException("End date must be after start date");
 
-        Project project = new Project();
+        Project project = new();
         project.ApplyChange(new ProjectCreatedEvent(
             id, projectNumber, name, type, startDate, endDate,
             budget, currency, customerId, projectManagerId, description));

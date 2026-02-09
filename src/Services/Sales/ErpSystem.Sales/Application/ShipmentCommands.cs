@@ -26,31 +26,38 @@ public class ShipmentCommandHandler(
 
         Guid id = Guid.NewGuid();
         string shipmentNumber = $"SHP-{DateTime.UtcNow:yyyyMMdd}-{id.ToString()[..4]}";
-        
+
         Shipment shipment = Shipment.Create(
-            id, 
-            shipmentNumber, 
-            request.SalesOrderId, 
-            so.SoNumber, 
-            request.ShippedDate, 
-            request.ShippedBy, 
-            request.WarehouseId, 
+            id,
+            shipmentNumber,
+            request.SalesOrderId,
+            so.SoNumber,
+            request.ShippedDate,
+            request.ShippedBy,
+            request.WarehouseId,
             request.Lines);
-            
+
         await shipmentRepo.SaveAsync(shipment);
 
         // Update SalesOrder status/progress
         so.ProcessShipment(id, request.Lines.Select(l => new ShipmentProcessedLine(l.LineNumber, l.ShippedQuantity)).ToList());
         await soRepo.SaveAsync(so);
 
-        // Publish Integration Event for Inventory Issue
-        SalesIntegrationEvents.ShipmentCreatedIntegrationEvent integrationEvent = new SalesIntegrationEvents.ShipmentCreatedIntegrationEvent(
+        // Publish Integration Event for Inventory Issue and Finance Invoice
+        SalesIntegrationEvents.ShipmentCreatedIntegrationEvent integrationEvent = new(
             id,
             so.Id,
+            so.CustomerId,
+            so.CustomerName,
             request.WarehouseId,
-            request.Lines.Select(l => {
+            request.Lines.Select(l =>
+            {
                 SalesOrderLine? soLine = so.Lines.FirstOrDefault(sol => sol.LineNumber == l.LineNumber);
-                return new SalesIntegrationEvents.ShipmentItem(l.MaterialId, soLine?.MaterialName ?? "Unknown", l.ShippedQuantity);
+                return new SalesIntegrationEvents.ShipmentItem(
+                    l.MaterialId,
+                    soLine?.MaterialName ?? "Unknown",
+                    l.ShippedQuantity,
+                    soLine?.UnitPrice ?? 0);
             }).ToList()
         );
         await eventBus.PublishAsync(integrationEvent, ct);

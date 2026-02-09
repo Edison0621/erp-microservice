@@ -18,7 +18,7 @@ public class AssetProjectionHandler(AssetsReadDbContext db) :
             ? (e.AcquisitionCost - e.SalvageValue) / e.UsefulLifeMonths
             : 0;
 
-        AssetReadModel asset = new AssetReadModel
+        AssetReadModel asset = new()
         {
             Id = e.AssetId,
             AssetNumber = e.AssetNumber,
@@ -67,7 +67,7 @@ public class AssetProjectionHandler(AssetsReadDbContext db) :
     {
         AssetReadModel? asset = await db.Assets.FindAsync([e.AssetId], ct);
         
-        MaintenanceReadModel maintenance = new MaintenanceReadModel
+        MaintenanceReadModel maintenance = new()
         {
             Id = e.MaintenanceId,
             AssetId = e.AssetId,
@@ -94,7 +94,7 @@ public class AssetProjectionHandler(AssetsReadDbContext db) :
     {
         AssetReadModel? asset = await db.Assets.FindAsync([e.AssetId], ct);
 
-        DepreciationReadModel depreciation = new DepreciationReadModel
+        DepreciationReadModel depreciation = new()
         {
             Id = Guid.NewGuid(),
             AssetId = e.AssetId,

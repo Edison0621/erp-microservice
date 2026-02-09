@@ -231,7 +231,7 @@ public class Asset : AggregateRoot<Guid>
         decimal salvageValue,
         string? description = null)
     {
-        Asset asset = new Asset();
+        Asset asset = new();
         asset.ApplyChange(new AssetRegisteredEvent(
             id, assetNumber, name, type, description, 
             acquisitionCost, acquisitionDate, locationId,

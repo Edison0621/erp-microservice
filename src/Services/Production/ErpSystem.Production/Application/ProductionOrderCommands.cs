@@ -6,6 +6,7 @@ using ErpSystem.Production.Domain;
 namespace ErpSystem.Production.Application;
 
 public record CreateProductionOrderCommand(
+    string TenantId,
     string MaterialId,
     string MaterialCode,
     string MaterialName,
@@ -40,7 +41,7 @@ public class ProductionOrderCommandHandler(EventStoreRepository<ProductionOrder>
     {
         Guid id = Guid.NewGuid();
         string orderNumber = $"PRD-{DateTime.UtcNow:yyyyMMdd}-{id.ToString()[..4]}";
-        ProductionOrder order = ProductionOrder.Create(id, orderNumber, request.MaterialId, request.MaterialCode, request.MaterialName, request.PlannedQuantity);
+        ProductionOrder order = ProductionOrder.Create(id, request.TenantId, orderNumber, request.MaterialId, request.MaterialCode, request.MaterialName, request.PlannedQuantity);
         await repo.SaveAsync(order);
         return id;
     }
@@ -51,6 +52,15 @@ public class ProductionOrderCommandHandler(EventStoreRepository<ProductionOrder>
         if (order == null) throw new KeyNotFoundException("Order not found");
         order.Release();
         await repo.SaveAsync(order);
+
+        // Publish Integration Event for Quality
+        await eventBus.PublishAsync(new ProductionIntegrationEvents.ProductionOrderReleasedIntegrationEvent(
+            order.Id,
+            order.OrderNumber,
+            order.MaterialId,
+            order.TenantId
+        ), ct);
+
         return true;
     }
 
@@ -58,7 +68,7 @@ public class ProductionOrderCommandHandler(EventStoreRepository<ProductionOrder>
     {
         ProductionOrder? order = await repo.LoadAsync(request.OrderId);
         if (order == null) throw new KeyNotFoundException("Order not found");
-        
+
         order.ConsumeMaterial(request.MaterialId, request.WarehouseId, request.Quantity, request.ConsumedBy);
         await repo.SaveAsync(order);
 

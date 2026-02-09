@@ -1,4 +1,5 @@
 using ErpSystem.Reporting.Controllers;
+using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.Reporting.Application;
 
@@ -17,30 +18,35 @@ public interface IDashboardService
 /// </summary>
 /// <param name="logger">The logger.</param>
 /// <seealso cref="ErpSystem.Reporting.Application.IDashboardService" />
-public class DashboardService(ILogger<DashboardService> logger) : IDashboardService
+public class DashboardService(ReportingDbContext db, ILogger<DashboardService> logger) : IDashboardService
 {
     public async Task<DashboardSummary> GetSummaryAsync()
     {
-        // In production, aggregate from multiple services via Dapr
-        // For demo, return sample data
-        logger.LogInformation("Fetching dashboard summary");
-        
+        logger.LogInformation("Fetching real dashboard summary from database");
+
+        DashboardSummaryReadModel? summary = await db.DashboardSummaries.FirstOrDefaultAsync();
+        if (summary == null)
+        {
+            // Initial/Empty state
+            return new DashboardSummary(0, 0, 0, 0, 0, 0, 0, 0);
+        }
+
         return new DashboardSummary(
-            TotalRevenue: 1250000.00m,
-            RevenueChange: 12.5m,
-            TotalOrders: 1847,
-            OrdersChange: 8,
-            InventoryValue: 3450000.00m,
-            LowStockItems: 23,
-            PendingPurchaseOrders: 15,
-            ActiveProductionOrders: 7);
+            TotalRevenue: summary.TotalRevenue,
+            RevenueChange: summary.RevenueChange,
+            TotalOrders: summary.TotalOrders,
+            OrdersChange: summary.OrdersChange,
+            InventoryValue: summary.InventoryValue,
+            LowStockItems: summary.LowStockItems,
+            PendingPurchaseOrders: summary.PendingPurchaseOrders,
+            ActiveProductionOrders: summary.ActiveProductionOrders);
     }
 
     public async Task<IEnumerable<TrendDataPoint>> GetSalesTrendAsync(int days)
     {
         List<TrendDataPoint> trend = [];
         decimal baseValue = 40000m;
-        Random random = new Random(42); // Deterministic for demo
+        Random random = new(42); // Deterministic for demo
 
         for (int i = days; i >= 0; i--)
         {

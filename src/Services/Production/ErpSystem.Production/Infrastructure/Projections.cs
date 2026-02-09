@@ -12,7 +12,7 @@ public class ProductionProjections(ProductionReadDbContext readDb) :
 {
     public async Task Handle(ProductionOrderCreatedEvent n, CancellationToken ct)
     {
-        ProductionOrderReadModel model = new ProductionOrderReadModel
+        ProductionOrderReadModel model = new()
         {
             Id = n.OrderId,
             OrderNumber = n.OrderNumber,

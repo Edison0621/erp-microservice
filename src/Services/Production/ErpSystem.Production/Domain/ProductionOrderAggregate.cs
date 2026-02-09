@@ -16,18 +16,21 @@ public enum ProductionOrderStatus
 // Events
 public record ProductionOrderCreatedEvent(
     Guid OrderId,
+    string TenantId,
     string OrderNumber,
     string MaterialId,
     string MaterialCode,
     string MaterialName,
     decimal PlannedQuantity,
     DateTime CreatedDate
-) : IDomainEvent {
+) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
 
-public record ProductionOrderReleasedEvent(Guid OrderId) : IDomainEvent {
+public record ProductionOrderReleasedEvent(Guid OrderId) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
@@ -38,7 +41,8 @@ public record MaterialConsumedEvent(
     string WarehouseId,
     decimal Quantity,
     string ConsumedBy
-) : IDomainEvent {
+) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
@@ -49,12 +53,14 @@ public record ProductionReportedEvent(
     decimal ScrapQuantity,
     string WarehouseId,
     string ReportedBy
-) : IDomainEvent {
+) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
 
-public record ProductionOrderCompletedEvent(Guid OrderId) : IDomainEvent {
+public record ProductionOrderCompletedEvent(Guid OrderId) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
@@ -62,6 +68,7 @@ public record ProductionOrderCompletedEvent(Guid OrderId) : IDomainEvent {
 // Aggregate
 public class ProductionOrder : AggregateRoot<Guid>
 {
+    public string TenantId { get; private set; } = string.Empty;
     public string OrderNumber { get; private set; } = string.Empty;
     public string MaterialId { get; private set; } = string.Empty;
     public decimal PlannedQuantity { get; private set; }
@@ -70,15 +77,16 @@ public class ProductionOrder : AggregateRoot<Guid>
     public ProductionOrderStatus Status { get; private set; }
 
     public static ProductionOrder Create(
-        Guid id, 
-        string orderNumber, 
-        string materialId, 
-        string materialCode, 
-        string materialName, 
+        Guid id,
+        string tenantId,
+        string orderNumber,
+        string materialId,
+        string materialCode,
+        string materialName,
         decimal plannedQuantity)
     {
-        ProductionOrder order = new ProductionOrder();
-        order.ApplyChange(new ProductionOrderCreatedEvent(id, orderNumber, materialId, materialCode, materialName, plannedQuantity, DateTime.UtcNow));
+        ProductionOrder order = new();
+        order.ApplyChange(new ProductionOrderCreatedEvent(id, tenantId, orderNumber, materialId, materialCode, materialName, plannedQuantity, DateTime.UtcNow));
         return order;
     }
 
@@ -116,6 +124,7 @@ public class ProductionOrder : AggregateRoot<Guid>
         {
             case ProductionOrderCreatedEvent e:
                 this.Id = e.OrderId;
+                this.TenantId = e.TenantId;
                 this.OrderNumber = e.OrderNumber;
                 this.MaterialId = e.MaterialId;
                 this.PlannedQuantity = e.PlannedQuantity;

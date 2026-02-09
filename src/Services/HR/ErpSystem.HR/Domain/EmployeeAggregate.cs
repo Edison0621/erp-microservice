@@ -98,7 +98,7 @@ public class Employee : AggregateRoot<Guid>
         string managerEmployeeId, 
         string costCenterId)
     {
-        Employee employee = new Employee();
+        Employee employee = new();
         employee.ApplyChange(new EmployeeHiredEvent(
             id, employeeNumber, fullName, gender, dateOfBirth, idType, idNumber, 
             hireDate, employmentType, companyId, departmentId, positionId, managerEmployeeId, costCenterId));

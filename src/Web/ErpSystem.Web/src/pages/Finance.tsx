@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { Search, Plus, Calendar, AlertCircle, TrendingUp, TrendingDown, Package, CheckCircle } from 'lucide-react';
+import { Search, Plus, Calendar, AlertCircle, TrendingUp, TrendingDown, Package, CheckCircle, X } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Invoice {
@@ -36,6 +36,13 @@ export const Finance = () => {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
 
+    // Statement Reconciliation State
+    const [reconModalOpen, setReconModalOpen] = useState(false);
+    const [lookupSupplierId, setLookupSupplierId] = useState('');
+    const [lookupPeriod, setLookupPeriod] = useState(new Date().toISOString().slice(0, 7).replace('-', '')); // yyyyMM
+    const [selectedStatement, setSelectedStatement] = useState<any | null>(null);
+    const [reconLoading, setReconLoading] = useState(false);
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -53,6 +60,31 @@ export const Finance = () => {
             console.error("Failed to fetch finance data", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleLookupStatement = async () => {
+        setReconLoading(true);
+        try {
+            const { data } = await api.get(`/finance/statements/lookup?supplierId=${lookupSupplierId}&period=${lookupPeriod}`);
+            setSelectedStatement(data);
+        } catch (error) {
+            alert("Statement not found for this period/supplier.");
+            setSelectedStatement(null);
+        } finally {
+            setReconLoading(false);
+        }
+    };
+
+    const handleReconcile = async () => {
+        if (!selectedStatement) return;
+        try {
+            await api.post(`/finance/statements/${selectedStatement.statementId}/reconcile`);
+            alert("Statement reconciled successfully!");
+            // Optionally refresh or close
+            handleLookupStatement(); // Refresh details
+        } catch (error) {
+            alert("Failed to reconcile statement.");
         }
     };
 
@@ -155,9 +187,12 @@ export const Finance = () => {
                             <span className="text-sm font-medium text-gray-700">Record Payment</span>
                             <span className="text-gray-400 group-hover:text-gray-600">→</span>
                         </button>
-                        <button className="w-full text-left px-4 py-3 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-between group">
-                            <span className="text-sm font-medium text-gray-700">Create Statement</span>
-                            <span className="text-gray-400 group-hover:text-gray-600">→</span>
+                        <button
+                            onClick={() => setReconModalOpen(true)}
+                            className="w-full text-left px-4 py-3 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-100 flex items-center justify-between group"
+                        >
+                            <span className="text-sm font-medium text-blue-700 font-bold">Statement Reconciliation</span>
+                            <span className="text-blue-400 group-hover:text-blue-600">→</span>
                         </button>
                         <button className="w-full text-left px-4 py-3 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-between group">
                             <span className="text-sm font-medium text-gray-700">Aging Report</span>
@@ -197,7 +232,6 @@ export const Finance = () => {
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="text-sm text-gray-900">{getFirstLineProduct(inv.linesJson)}</div>
-                                        {/* <div className="text-xs text-gray-400">Spec: A13000</div> Mocked spec */}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                         {inv.partyName}
@@ -222,9 +256,107 @@ export const Finance = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Reconciliation Modal */}
+            {reconModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full">
+                        <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                            <h2 className="text-lg font-bold">Statement Reconciliation</h2>
+                            <button onClick={() => setReconModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex gap-4 items-end">
+                                <div className="flex-1 space-y-1">
+                                    <label className="text-xs font-medium text-gray-500">Supplier ID</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border rounded px-3 py-2"
+                                        value={lookupSupplierId}
+                                        onChange={e => setLookupSupplierId(e.target.value)}
+                                        placeholder="Enter Supplier ID"
+                                    />
+                                </div>
+                                <div className="w-40 space-y-1">
+                                    <label className="text-xs font-medium text-gray-500">Period (yyyyMM)</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border rounded px-3 py-2"
+                                        value={lookupPeriod}
+                                        onChange={e => setLookupPeriod(e.target.value)}
+                                        placeholder="202310"
+                                    />
+                                </div>
+                                <button
+                                    onClick={handleLookupStatement}
+                                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 h-[42px]"
+                                    disabled={reconLoading}
+                                >
+                                    {reconLoading ? 'Searching...' : 'Search'}
+                                </button>
+                            </div>
+
+                            {selectedStatement && (
+                                <div className="mt-6 border rounded-lg overflow-hidden">
+                                    <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
+                                        <div>
+                                            <span className="text-sm text-gray-500">Status: </span>
+                                            <span className={`text-sm font-bold ${selectedStatement.status === 'Reconciled' ? 'text-green-600' : 'text-blue-600'}`}>
+                                                {selectedStatement.status}
+                                            </span>
+                                        </div>
+                                        <div className="text-lg font-bold">
+                                            Total: ${selectedStatement.totalAmount.toLocaleString()}
+                                        </div>
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50 sticky top-0">
+                                                <tr>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ref #</th>
+                                                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {selectedStatement.lines.map((line: any, i: number) => (
+                                                    <tr key={i}>
+                                                        <td className="px-4 py-2 text-sm">{new Date(line.date).toLocaleDateString()}</td>
+                                                        <td className="px-4 py-2 text-sm">
+                                                            <span className={line.type === 'GoodsReturned' ? 'text-red-600' : 'text-gray-900'}>
+                                                                {line.type}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-2 text-sm text-gray-500">{line.sourceNumber}</td>
+                                                        <td className="px-4 py-2 text-right text-sm font-medium">
+                                                            ${line.amount.toLocaleString()}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+                            <button onClick={() => setReconModalOpen(false)} className="btn border border-gray-300 px-4 py-2 rounded text-gray-700">Close</button>
+                            {selectedStatement && selectedStatement.status === 'Open' && (
+                                <button onClick={handleReconcile} className="btn bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center">
+                                    <CheckCircle size={16} className="mr-2" /> Reconcile Statement
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
 
 const StatCard = ({ title, value, icon, trend }: any) => (
     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">

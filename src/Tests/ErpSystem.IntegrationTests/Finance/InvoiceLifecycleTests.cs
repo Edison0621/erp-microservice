@@ -22,7 +22,7 @@ public class InvoiceLifecycleTests : IntegrationTestBase
             IMediator mediator = financeApp.Services.GetRequiredService<IMediator>();
 
             // 2. Create Draft Invoice
-            var createCmd = new CreateInvoiceCommand(
+            CreateInvoiceCommand createCmd = new(
                 "INV-TEST-001",
                 InvoiceType.AccountsReceivable,
                 "CUS-001",
@@ -30,10 +30,7 @@ public class InvoiceLifecycleTests : IntegrationTestBase
                 DateTime.UtcNow,
                 DateTime.UtcNow.AddDays(30),
                 "CNY",
-                new List<InvoiceLine>
-                {
-                    new InvoiceLine("1", "MAT-01", "Test Product", 10, 100, 0.13m)
-                }
+                [new InvoiceLine("1", "MAT-01", "Test Product", 10, 100, 0.13m)]
             );
 
             Guid invoiceId = await mediator.Send(createCmd);

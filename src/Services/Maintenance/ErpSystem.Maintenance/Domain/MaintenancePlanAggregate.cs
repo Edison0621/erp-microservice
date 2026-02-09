@@ -22,7 +22,7 @@ public class MaintenancePlan : AggregateRoot<Guid>
         MaintenanceFrequency frequency,
         int intervalValue)
     {
-        MaintenancePlan plan = new MaintenancePlan();
+        MaintenancePlan plan = new();
         plan.ApplyChange(new MaintenancePlanCreatedEvent(
             id,
             tenantId,

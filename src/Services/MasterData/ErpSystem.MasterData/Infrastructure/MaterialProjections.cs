@@ -13,7 +13,7 @@ public class MaterialProjection(MasterDataReadDbContext dbContext) :
 {
     public async Task Handle(MaterialCreatedEvent notification, CancellationToken cancellationToken)
     {
-        MaterialReadModel material = new MaterialReadModel
+        MaterialReadModel material = new()
         {
             MaterialId = notification.MaterialId,
             MaterialCode = notification.MaterialCode,

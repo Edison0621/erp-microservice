@@ -20,7 +20,7 @@ public class CashFlowForecast : AggregateRoot<Guid>
         decimal inflow,
         decimal outflow)
     {
-        CashFlowForecast forecast = new CashFlowForecast();
+        CashFlowForecast forecast = new();
         forecast.ApplyChange(new CashFlowForecastCreatedEvent(
             id,
             tenantId,

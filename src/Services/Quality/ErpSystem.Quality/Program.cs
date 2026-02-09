@@ -28,7 +28,7 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Quali
 builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 
 // Register the main EventStore
-builder.Services.AddScoped<IEventStore>(sp => 
+builder.Services.AddScoped<IEventStore>(sp =>
     new EventStore(
         sp.GetRequiredService<QualityDbContext>(),
         sp.GetRequiredService<IPublisher>(),
@@ -75,7 +75,7 @@ namespace ErpSystem.Quality.Infrastructure
                 b.HasKey(e => new { e.AggregateId, e.Version });
                 b.Property(e => e.Payload).HasColumnType("jsonb");
             });
-            
+
             modelBuilder.Entity<QualityPoint>().HasKey(x => x.Id);
             modelBuilder.Entity<QualityCheckReadModel>().HasKey(x => x.Id);
         }
@@ -92,12 +92,11 @@ namespace ErpSystem.Quality.Infrastructure
 
     public class QualityPointRepository(QualityDbContext context) : IQualityPointRepository
     {
-        private readonly QualityDbContext _context = context;
-
-        public Task<List<QualityPoint>> GetPointsForMaterial(string materialId, string operationType)
+        public async Task<List<QualityPoint>> GetPointsForMaterial(string materialId, string operationType)
         {
-            // In a real system, this would query the DB
-            return Task.FromResult(new List<QualityPoint>());
+            return await context.QualityPoints
+                .Where(x => (x.MaterialId == materialId || x.MaterialId == "*") && x.OperationType == operationType && x.IsActive)
+                .ToListAsync();
         }
     }
 }

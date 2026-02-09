@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\ErpSystem.BuildingBlocks\ErpSystem.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\Procurement\ErpSystem.Procurement\ErpSystem.Procurement.csproj" />
+    <ProjectReference Include="..\..\Production\ErpSystem.Production\ErpSystem.Production.csproj" />
   </ItemGroup>
 
 </Project>

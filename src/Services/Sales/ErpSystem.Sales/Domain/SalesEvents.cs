@@ -7,6 +7,7 @@ public class SalesIntegrationEvents
     public record OrderConfirmedIntegrationEvent(
         Guid OrderId,
         string SoNumber,
+        decimal TotalAmount,
         List<OrderConfirmedItem> Items
     ) : INotification;
 
@@ -19,6 +20,8 @@ public class SalesIntegrationEvents
     public record ShipmentCreatedIntegrationEvent(
         Guid ShipmentId,
         Guid SalesOrderId,
+        string CustomerId,
+        string CustomerName,
         string WarehouseId,
         List<ShipmentItem> Items
     ) : INotification;
@@ -26,6 +29,7 @@ public class SalesIntegrationEvents
     public record ShipmentItem(
         string MaterialId,
         string MaterialName,
-        decimal Quantity
+        decimal Quantity,
+        decimal UnitPrice
     );
 }

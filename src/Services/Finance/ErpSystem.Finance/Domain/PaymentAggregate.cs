@@ -64,7 +64,7 @@ public class Payment : AggregateRoot<Guid>
         PaymentMethod method, 
         string? reference)
     {
-        Payment p = new Payment();
+        Payment p = new();
         p.ApplyChange(new PaymentCreatedEvent(id, number, direction, partyId, partyName, amount, currency, date, method, reference));
         return p;
     }

@@ -67,7 +67,7 @@ public class MrpCalculationTests
     public void ProcurementSuggestion_ShouldTrackApprovalWorkflow()
     {
         // Arrange
-        ProcurementCalculation calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new(
             CurrentOnHand: 50m,
             Reserved: 20m,
             Available: 30m,
@@ -107,7 +107,7 @@ public class MrpCalculationTests
     public void ProcurementSuggestion_ShouldEnforceWorkflowRules()
     {
         // Arrange
-        ProcurementCalculation calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new(
             CurrentOnHand: 50m,
             Reserved: 20m,
             Available: 30m,
@@ -147,7 +147,7 @@ public class MrpCalculationTests
         // Scenario: Current stock is 30, min is 100, max is 500
         // Expected: Should suggest reordering 470 units (to reach max)
         
-        ProcurementCalculation calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new(
             CurrentOnHand: 50m,
             Reserved: 20m,
             Available: 30m,
@@ -175,7 +175,7 @@ public class MrpCalculationTests
         // Forecasted = 30 + 80 = 110, which is above min (100)
         // Expected: No reordering needed
         
-        ProcurementCalculation calculation = new ProcurementCalculation(
+        ProcurementCalculation calculation = new(
             CurrentOnHand: 50m,
             Reserved: 20m,
             Available: 30m,

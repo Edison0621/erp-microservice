@@ -17,7 +17,7 @@ public class Position : AggregateRoot<Guid>
 
     public static Position Create(Guid id, string name, string description)
     {
-        Position pos = new Position();
+        Position pos = new();
         pos.ApplyChange(new PositionCreatedEvent(id, name, description));
         return pos;
     }

@@ -31,52 +31,59 @@ public record PurchaseOrderLine(
 
 // Events
 public record PurchaseOrderCreatedEvent(
-    Guid PoId, 
-    string PoNumber, 
-    string SupplierId, 
-    string SupplierName, 
-    DateTime OrderDate, 
-    string Currency, 
+    Guid PoId,
+    string PoNumber,
+    string SupplierId,
+    string SupplierName,
+    DateTime OrderDate,
+    string Currency,
     List<PurchaseOrderLine> Lines
-) : IDomainEvent {
+) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
 
-public record PurchaseOrderSubmittedEvent(Guid PoId) : IDomainEvent {
+public record PurchaseOrderSubmittedEvent(Guid PoId) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
 
-public record PurchaseOrderApprovedEvent(Guid PoId, string ApprovedBy, string Comment) : IDomainEvent {
+public record PurchaseOrderApprovedEvent(Guid PoId, string ApprovedBy, string Comment) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
 
-public record PurchaseOrderSentEvent(Guid PoId, string SentBy, string Method) : IDomainEvent {
+public record PurchaseOrderSentEvent(Guid PoId, string SentBy, string Method) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
 
 public record GoodsReceivedEvent(
-    Guid PoId, 
-    Guid ReceiptId, 
-    DateTime ReceiptDate, 
-    string ReceivedBy, 
+    Guid PoId,
+    Guid ReceiptId,
+    DateTime ReceiptDate,
+    string ReceivedBy,
     List<ReceiptLine> Lines
-) : IDomainEvent {
+) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
 
 public record ReceiptLine(string LineNumber, decimal Quantity, string WarehouseId, string LocationId, string QualityStatus);
 
-public record PurchaseOrderClosedEvent(Guid PoId, string Reason) : IDomainEvent {
+public record PurchaseOrderClosedEvent(Guid PoId, string Reason) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
 
-public record PurchaseOrderCancelledEvent(Guid PoId, string Reason) : IDomainEvent {
+public record PurchaseOrderCancelledEvent(Guid PoId, string Reason) : IDomainEvent
+{
     public Guid EventId { get; } = Guid.NewGuid();
     public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }
@@ -93,15 +100,15 @@ public class PurchaseOrder : AggregateRoot<Guid>
     public decimal TotalAmount => this.Lines.Sum(l => l.TotalAmount);
 
     public static PurchaseOrder Create(
-        Guid id, 
-        string poNumber, 
-        string supplierId, 
-        string supplierName, 
-        DateTime orderDate, 
-        string currency, 
+        Guid id,
+        string poNumber,
+        string supplierId,
+        string supplierName,
+        DateTime orderDate,
+        string currency,
         List<PurchaseOrderLine> lines)
     {
-        PurchaseOrder po = new PurchaseOrder();
+        PurchaseOrder po = new();
         po.ApplyChange(new PurchaseOrderCreatedEvent(id, poNumber, supplierId, supplierName, orderDate, currency, lines));
         return po;
     }
@@ -148,11 +155,30 @@ public class PurchaseOrder : AggregateRoot<Guid>
     {
         if (this.Status != PurchaseOrderStatus.Draft && this.Status != PurchaseOrderStatus.PendingApproval && this.Status != PurchaseOrderStatus.Approved)
             throw new InvalidOperationException("PO cannot be cancelled at this stage");
-        
+
         if (this.Lines.Any(l => l.ReceivedQuantity > 0))
             throw new InvalidOperationException("Cannot cancel PO with received goods");
 
         this.ApplyChange(new PurchaseOrderCancelledEvent(this.Id, reason));
+    }
+
+    public void ReturnGoods(string returnId, List<ReturnLine> lines, string reason)
+    {
+        if (this.Status != PurchaseOrderStatus.PartiallyReceived && this.Status != PurchaseOrderStatus.FullyReceived && this.Status != PurchaseOrderStatus.Closed)
+            throw new InvalidOperationException("PO status does not allow return");
+
+        // Validate lines
+        foreach (ReturnLine rl in lines)
+        {
+            PurchaseOrderLine? poLine = this.Lines.FirstOrDefault(l => l.LineNumber == rl.LineNumber);
+            if (poLine == null)
+                throw new Exception($"Line Number {rl.LineNumber} not found in PO");
+
+            if (rl.Quantity > poLine.ReceivedQuantity)
+                throw new Exception($"Cannot return more than received quantity for line {rl.LineNumber}");
+        }
+
+        this.ApplyChange(new PurchaseOrderReturnedEvent(this.Id, returnId, DateTime.UtcNow, lines, reason));
     }
 
     protected override void Apply(IDomainEvent @event)
@@ -184,8 +210,28 @@ public class PurchaseOrder : AggregateRoot<Guid>
                     PurchaseOrderLine updatedLine = line with { ReceivedQuantity = line.ReceivedQuantity + rl.Quantity };
                     this.Lines[this.Lines.FindIndex(l => l.LineNumber == rl.LineNumber)] = updatedLine;
                 }
-                
+
                 this.Status = this.Lines.All(l => l.ReceivedQuantity >= l.OrderedQuantity) ? PurchaseOrderStatus.FullyReceived : PurchaseOrderStatus.PartiallyReceived;
+                break;
+            case PurchaseOrderReturnedEvent e:
+                foreach (ReturnLine rl in e.Lines)
+                {
+                    PurchaseOrderLine line = this.Lines.First(l => l.LineNumber == rl.LineNumber);
+                    PurchaseOrderLine updatedLine = line with { ReceivedQuantity = line.ReceivedQuantity - rl.Quantity };
+                    this.Lines[this.Lines.FindIndex(l => l.LineNumber == rl.LineNumber)] = updatedLine;
+                }
+                // Re-evaluate status? If we return everything, do we go back to SentToSupplier? 
+                // For now, let's keep it simple: if received > 0, it's PartiallyReceived, else SentToSupplier (if it was received before)
+                // But logically, if we returned goods, we might expect replacement or refund. 
+                // If refund, the PO quantity received decreases.
+
+                bool anyReceived = this.Lines.Any(l => l.ReceivedQuantity > 0);
+                bool allReceived = this.Lines.All(l => l.ReceivedQuantity >= l.OrderedQuantity);
+
+                if (allReceived) this.Status = PurchaseOrderStatus.FullyReceived;
+                else if (anyReceived) this.Status = PurchaseOrderStatus.PartiallyReceived;
+                else this.Status = PurchaseOrderStatus.SentToSupplier; // approximate fallback
+
                 break;
             case PurchaseOrderClosedEvent:
                 this.Status = PurchaseOrderStatus.Closed;
@@ -195,4 +241,18 @@ public class PurchaseOrder : AggregateRoot<Guid>
                 break;
         }
     }
+}
+
+public record ReturnLine(string LineNumber, decimal Quantity, string Reason);
+
+public record PurchaseOrderReturnedEvent(
+    Guid PoId,
+    string ReturnId,
+    DateTime ReturnDate,
+    List<ReturnLine> Lines,
+    string Reason
+) : IDomainEvent
+{
+    public Guid EventId { get; } = Guid.NewGuid();
+    public DateTime OccurredOn { get; } = DateTime.UtcNow;
 }

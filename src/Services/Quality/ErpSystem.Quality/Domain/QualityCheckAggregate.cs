@@ -23,7 +23,7 @@ public class QualityCheck : AggregateRoot<Guid>
         string sourceType,
         string materialId)
     {
-        QualityCheck qc = new QualityCheck();
+        QualityCheck qc = new();
         qc.ApplyChange(new QualityCheckCreatedEvent(
             id,
             tenantId,

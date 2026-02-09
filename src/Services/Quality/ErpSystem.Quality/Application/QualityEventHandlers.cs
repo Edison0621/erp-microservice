@@ -1,5 +1,8 @@
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.Quality.Domain;
+using MediatR;
+using ErpSystem.Procurement.Domain;
+using ErpSystem.Production.Domain;
 
 namespace ErpSystem.Quality.Application;
 
@@ -10,16 +13,18 @@ namespace ErpSystem.Quality.Application;
 public class QualityIntegrationEventHandlers(
     IEventStore eventStore,
     IQualityPointRepository qualityPointRepository,
-    ILogger<QualityIntegrationEventHandlers> logger)
+    ILogger<QualityIntegrationEventHandlers> logger) :
+    INotificationHandler<ProcurementIntegrationEvents.GoodsReceivedIntegrationEvent>,
+    INotificationHandler<ProductionIntegrationEvents.ProductionOrderReleasedIntegrationEvent>
 {
     /// <summary>
     /// Handle inventory receipt - creates mandatory IQC (Incoming Quality Control)
     /// </summary>
-    public async Task HandleInventoryReceipt(InventoryReceiptIntegrationEvent @event)
+    public async Task Handle(ProcurementIntegrationEvents.GoodsReceivedIntegrationEvent @event, CancellationToken ct)
     {
-        logger.LogInformation("Processing inventory receipt for quality check: {ReceiptId}", @event.ReceiptId);
+        logger.LogInformation("Processing goods received for quality check: {ReceiptId}", @event.ReceiptId);
 
-        foreach (ReceiptItem item in @event.Items)
+        foreach (ProcurementIntegrationEvents.GoodsReceivedItem item in @event.Items)
         {
             // Find mandatory quality points for this material and operation
             List<QualityPoint> qualityPoints = await qualityPointRepository.GetPointsForMaterial(item.MaterialId, "RECEIPT");
@@ -29,9 +34,9 @@ public class QualityIntegrationEventHandlers(
                 Guid checkId = Guid.NewGuid();
                 QualityCheck check = QualityCheck.Create(
                     checkId,
-                    @event.TenantId,
+                    "TENANT-001", // Ideally get from event, but Procurement events currently lack it
                     point.Id,
-                    @event.ReceiptId,
+                    @event.ReceiptId.ToString(),
                     "INVENTORY_RECEIPT",
                     item.MaterialId);
 
@@ -47,7 +52,7 @@ public class QualityIntegrationEventHandlers(
     /// <summary>
     /// Handle production order start - creates mandatory PQC (Process Quality Control)
     /// </summary>
-    public async Task HandleProductionOrderStarted(ProductionOrderStartedIntegrationEvent @event)
+    public async Task Handle(ProductionIntegrationEvents.ProductionOrderReleasedIntegrationEvent @event, CancellationToken ct)
     {
         logger.LogInformation("Processing production order for quality check: {OrderId}", @event.OrderId);
 
@@ -60,7 +65,7 @@ public class QualityIntegrationEventHandlers(
                 checkId,
                 @event.TenantId,
                 point.Id,
-                @event.OrderId,
+                @event.OrderId.ToString(),
                 "PRODUCTION_ORDER",
                 @event.MaterialId);
 
@@ -73,22 +78,7 @@ public class QualityIntegrationEventHandlers(
     }
 }
 
-// Interfaces and Events (Placeholders)
 public interface IQualityPointRepository
 {
     Task<List<QualityPoint>> GetPointsForMaterial(string materialId, string operationType);
 }
-
-public record InventoryReceiptIntegrationEvent(
-    string TenantId,
-    string ReceiptId,
-    DateTime OccurredAt,
-    List<ReceiptItem> Items);
-
-public record ReceiptItem(string MaterialId, decimal Quantity);
-
-public record ProductionOrderStartedIntegrationEvent(
-    string TenantId,
-    string OrderId,
-    string MaterialId,
-    DateTime OccurredAt);

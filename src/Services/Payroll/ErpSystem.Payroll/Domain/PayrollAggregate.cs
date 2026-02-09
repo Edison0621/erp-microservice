@@ -207,7 +207,7 @@ public class SalaryStructure : AggregateRoot<Guid>
         string currency,
         string? description = null)
     {
-        SalaryStructure structure = new SalaryStructure();
+        SalaryStructure structure = new();
         structure.ApplyChange(new SalaryStructureCreatedEvent(id, name, description ?? "", baseSalary, currency));
         return structure;
     }
@@ -279,7 +279,7 @@ public class PayrollRun : AggregateRoot<Guid>
         DateTime paymentDate,
         string? description = null)
     {
-        PayrollRun run = new PayrollRun();
+        PayrollRun run = new();
         run.ApplyChange(new PayrollRunCreatedEvent(id, runNumber, year, month, paymentDate, description ?? ""));
         return run;
     }

@@ -16,7 +16,7 @@ public class LeadProjectionHandler(CrmReadDbContext db) :
 {
     public async Task Handle(LeadCreatedEvent e, CancellationToken ct)
     {
-        LeadReadModel lead = new LeadReadModel
+        LeadReadModel lead = new()
         {
             Id = e.LeadId,
             LeadNumber = e.LeadNumber,
@@ -111,7 +111,7 @@ public class OpportunityProjectionHandler(CrmReadDbContext db) :
 {
     public async Task Handle(OpportunityCreatedEvent e, CancellationToken ct)
     {
-        OpportunityReadModel opp = new OpportunityReadModel
+        OpportunityReadModel opp = new()
         {
             Id = e.OpportunityId,
             OpportunityNumber = e.OpportunityNumber,
@@ -239,7 +239,7 @@ public class CampaignProjectionHandler(CrmReadDbContext db) :
 {
     public async Task Handle(CampaignCreatedEvent e, CancellationToken ct)
     {
-        CampaignReadModel campaign = new CampaignReadModel
+        CampaignReadModel campaign = new()
         {
             Id = e.CampaignId,
             CampaignNumber = e.CampaignNumber,

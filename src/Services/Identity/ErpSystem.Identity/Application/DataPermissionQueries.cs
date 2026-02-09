@@ -16,7 +16,8 @@ public class ResolvedDataPermission
     public string DataDomain { get; set; }
     public ScopeType FinalScope { get; set; }
     public List<Guid> AllowedDepartmentIds { get; set; } = [];
-    
+    public HashSet<string> Permissions { get; set; } = [];
+
     // Logic: Merging multiple roles
     // If any role says ALL, then ALL.
     // If any role says DeptAndSub, and another says Dept, then DeptAndSub (larger coverage).
@@ -30,12 +31,12 @@ public class DataPermissionQueryHandler(EventStoreRepository<User> userRepo, Ide
         // 1. Get User to find assigned Roles
         // We can use UserReadModel logic if we put RoleCodes there, but Aggregate is source of truth for Roles list usually
         // Actually UserAggregate has List<string> Roles (RoleCodes).
-        
+
         User? user = await userRepo.LoadAsync(request.UserId);
         if (user == null) throw new KeyNotFoundException("User not found");
 
-        List<string> userRoleCodes = user.Roles.ToList(); 
-        
+        List<string> userRoleCodes = user.Roles.ToList();
+
         // 2. Load RoleDefinitions from ReadModel (more efficient than Aggregate loading loop)
         List<RoleReadModel> userRoles = await readContext.Roles
             .Where(r => userRoleCodes.Contains(r.RoleCode))
@@ -45,7 +46,7 @@ public class DataPermissionQueryHandler(EventStoreRepository<User> userRepo, Ide
         ScopeType finalScope = ScopeType.Self; // Default lowest
         // var allowedDepts ...
 
-        HashSet<string> allPermissions = []; //TODO
+        HashSet<string> allPermissions = [];
         List<RoleDataPermissionSafe> roleDataPermissions = [];
 
         foreach (RoleReadModel role in userRoles)
@@ -57,19 +58,19 @@ public class DataPermissionQueryHandler(EventStoreRepository<User> userRepo, Ide
             roleDataPermissions.AddRange(dp);
         }
 
-        RoleDataPermissionSafe? target = roleDataPermissions.FirstOrDefault(p => p.DataDomain == request.DataDomain);
-            
-        if (target != null)
+        // Filter data permissions for the requested domain and find the highest scope
+        List<RoleDataPermissionSafe> domainPermissions = roleDataPermissions.Where(p => p.DataDomain == request.DataDomain).ToList();
+        if (domainPermissions.Any())
         {
-            ScopeType scope = (ScopeType)target.ScopeType;
-            if (scope > finalScope) finalScope = scope; // Simple enum comparison works if All > Dept > Self
+            finalScope = (ScopeType)domainPermissions.Max(p => p.ScopeType);
         }
 
         return new ResolvedDataPermission
         {
             UserId = request.UserId,
             DataDomain = request.DataDomain,
-            FinalScope = finalScope
+            FinalScope = finalScope,
+            Permissions = allPermissions
         };
     }
 

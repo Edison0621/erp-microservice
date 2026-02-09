@@ -20,4 +20,11 @@ public class ProductionIntegrationEvents
         string WarehouseId,
         decimal Quantity
     ) : INotification;
+
+    public record ProductionOrderReleasedIntegrationEvent(
+        Guid OrderId,
+        string OrderNumber,
+        string MaterialId,
+        string TenantId
+    ) : INotification;
 }

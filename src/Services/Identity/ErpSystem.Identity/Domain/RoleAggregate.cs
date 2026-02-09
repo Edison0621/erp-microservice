@@ -50,7 +50,7 @@ public class Role : AggregateRoot<Guid>
 
     public static Role Create(Guid id, string roleName, string roleCode, bool isSystemRole)
     {
-        Role role = new Role();
+        Role role = new();
         role.ApplyChange(new RoleCreatedEvent(id, roleName, roleCode, isSystemRole));
         return role;
     }

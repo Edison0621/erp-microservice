@@ -20,7 +20,7 @@ public class Equipment : AggregateRoot<Guid>
         string equipmentCode,
         string workCenterId)
     {
-        Equipment equipment = new Equipment();
+        Equipment equipment = new();
         equipment.ApplyChange(new EquipmentCreatedEvent(
             id,
             tenantId,

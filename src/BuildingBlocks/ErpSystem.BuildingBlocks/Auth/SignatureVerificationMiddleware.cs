@@ -54,7 +54,7 @@ public class SignatureVerificationMiddleware(RequestDelegate next, IApiClientRep
 
         // Read Body safely
         context.Request.EnableBuffering();
-        using StreamReader reader = new StreamReader(context.Request.Body, leaveOpen: true);
+        using StreamReader reader = new(context.Request.Body, leaveOpen: true);
         string body = await reader.ReadToEndAsync();
         context.Request.Body.Position = 0;
 
@@ -77,7 +77,7 @@ public class SignatureVerificationMiddleware(RequestDelegate next, IApiClientRep
 
     private static string ComputeHmacSha256(string data, string key)
     {
-        using HMACSHA256 hmac = new HMACSHA256(Encoding.UTF8.GetBytes(key));
+        using HMACSHA256 hmac = new(Encoding.UTF8.GetBytes(key));
         byte[] hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
         return Convert.ToHexString(hash);
     }

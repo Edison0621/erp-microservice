@@ -23,7 +23,7 @@ public class QualityAlert : AggregateRoot<Guid>
         Guid sourceId,
         QualityAlertPriority priority)
     {
-        QualityAlert qa = new QualityAlert();
+        QualityAlert qa = new();
         qa.ApplyChange(new QualityAlertCreatedEvent(
             id,
             tenantId,

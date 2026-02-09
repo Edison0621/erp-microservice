@@ -57,7 +57,7 @@ public class Customer : AggregateRoot<Guid>
 
     public static Customer Create(Guid id, string code, string name, CustomerType type)
     {
-        Customer customer = new Customer();
+        Customer customer = new();
         customer.ApplyChange(new CustomerCreatedEvent(id, code, name, type));
         return customer;
     }

@@ -27,7 +27,7 @@ public class ProcurementSuggestion : AggregateRoot<Guid>
         string reorderingRuleId,
         ProcurementCalculation calculation)
     {
-        ProcurementSuggestion suggestion = new ProcurementSuggestion();
+        ProcurementSuggestion suggestion = new();
         suggestion.ApplyChange(new ProcurementSuggestionCreatedEvent(
             id,
             tenantId,

@@ -15,7 +15,7 @@ public class ProcurementProjections(ProcurementReadDbContext readDb) :
 {
     public async Task Handle(PurchaseOrderCreatedEvent n, CancellationToken ct)
     {
-        PurchaseOrderReadModel model = new PurchaseOrderReadModel
+        PurchaseOrderReadModel model = new()
         {
             Id = n.PoId,
             PoNumber = n.PoNumber,
@@ -69,7 +69,7 @@ public class ProcurementProjections(ProcurementReadDbContext readDb) :
     public async Task Handle(GoodsReceivedEvent n, CancellationToken ct)
     {
         // 1. Create GR Read Model
-        GoodsReceiptReadModel gr = new GoodsReceiptReadModel
+        GoodsReceiptReadModel gr = new()
         {
             Id = n.ReceiptId,
             GrNumber = $"GR-{DateTime.UtcNow:yyyyMMdd}-{n.ReceiptId.ToString()[..4]}",

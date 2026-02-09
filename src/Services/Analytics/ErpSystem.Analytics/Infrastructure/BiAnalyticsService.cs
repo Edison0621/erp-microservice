@@ -17,11 +17,11 @@ public class BiAnalyticsService(IConfiguration configuration)
     {
         List<InventoryTurnoverResult> result = [];
 
-        using NpgsqlConnection conn = new NpgsqlConnection(this._connectionString);
+        using NpgsqlConnection conn = new(this._connectionString);
         await conn.OpenAsync();
 
         // Query using continuous aggregate daily_inventory_summary
-        using NpgsqlCommand cmd = new NpgsqlCommand(
+        using NpgsqlCommand cmd = new(
             @"WITH cogs AS (
                 -- Cost of Goods Sold (Usage * Cost)
                 SELECT 
@@ -76,8 +76,8 @@ public class BiAnalyticsService(IConfiguration configuration)
         
         List<OeeResult> result =
         [
-            new OeeResult("EQUIP-CNC-01", 0.85m, 0.92m, 0.98m, 0.76m),
-            new OeeResult("EQUIP-LATH-02", 0.90m, 0.88m, 0.95m, 0.75m)
+            new("EQUIP-CNC-01", 0.85m, 0.92m, 0.98m, 0.76m),
+            new("EQUIP-LATH-02", 0.90m, 0.88m, 0.95m, 0.75m)
         ];
 
         // In a real scenario, we'd query equipment logs and quality checks

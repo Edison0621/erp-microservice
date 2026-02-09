@@ -13,7 +13,7 @@ public class SalesProjections(SalesReadDbContext readDb) :
 {
     public async Task Handle(SalesOrderCreatedEvent n, CancellationToken ct)
     {
-        SalesOrderReadModel model = new SalesOrderReadModel
+        SalesOrderReadModel model = new()
         {
             Id = n.OrderId,
             SoNumber = n.SoNumber,
@@ -70,7 +70,7 @@ public class SalesProjections(SalesReadDbContext readDb) :
 
     public async Task Handle(ShipmentCreatedEvent n, CancellationToken ct)
     {
-        ShipmentReadModel model = new ShipmentReadModel
+        ShipmentReadModel model = new()
         {
             Id = n.ShipmentId,
             ShipmentNumber = n.ShipmentNumber,

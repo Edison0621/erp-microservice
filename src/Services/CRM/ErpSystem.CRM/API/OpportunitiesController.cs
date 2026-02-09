@@ -3,12 +3,16 @@ using Microsoft.EntityFrameworkCore;
 using ErpSystem.BuildingBlocks.Domain;
 using ErpSystem.CRM.Domain;
 using ErpSystem.CRM.Infrastructure;
+using ErpSystem.BuildingBlocks.EventBus;
 
 namespace ErpSystem.CRM.API;
 
 [ApiController]
 [Route("api/[controller]")]
-public class OpportunitiesController(EventStoreRepository<Opportunity> repository, CrmReadDbContext readDb) : ControllerBase
+public class OpportunitiesController(
+    EventStoreRepository<Opportunity> repository,
+    CrmReadDbContext readDb,
+    IEventBus eventBus) : ControllerBase
 {
     #region Queries
 
@@ -177,6 +181,19 @@ public class OpportunitiesController(EventStoreRepository<Opportunity> repositor
 
         opportunity.MarkAsWon(request.FinalValue, request.WinReason, request.SalesOrderId);
         await repository.SaveAsync(opportunity);
+
+        // Publish Integration Event for Sales service
+        await eventBus.PublishAsync(new CrmIntegrationEvents.OpportunityWonIntegrationEvent(
+            opportunity.Id,
+            opportunity.OpportunityNumber,
+            opportunity.Name,
+            opportunity.CustomerId,
+            opportunity.CustomerName,
+            request.FinalValue ?? opportunity.EstimatedValue,
+            opportunity.Currency,
+            opportunity.AssignedToUserId,
+            DateTime.UtcNow
+        ));
 
         return this.Ok(new { id, stage = "ClosedWon", finalValue = request.FinalValue ?? opportunity.EstimatedValue });
     }

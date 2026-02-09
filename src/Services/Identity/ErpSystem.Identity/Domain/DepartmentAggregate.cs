@@ -24,7 +24,7 @@ public class Department : AggregateRoot<Guid>
 
     public static Department Create(Guid id, string name, string parentId, int order)
     {
-        Department dept = new Department();
+        Department dept = new();
         dept.ApplyChange(new DepartmentCreatedEvent(id, name, parentId, order));
         return dept;
     }

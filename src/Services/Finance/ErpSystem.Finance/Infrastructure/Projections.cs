@@ -16,7 +16,7 @@ public class FinanceProjections(FinanceReadDbContext context) :
 {
     public async Task Handle(InvoiceCreatedEvent e, CancellationToken ct)
     {
-        InvoiceReadModel model = new InvoiceReadModel
+        InvoiceReadModel model = new()
         {
             InvoiceId = e.InvoiceId,
             InvoiceNumber = e.InvoiceNumber,
@@ -80,7 +80,7 @@ public class FinanceProjections(FinanceReadDbContext context) :
 
     public async Task Handle(PaymentCreatedEvent e, CancellationToken ct)
     {
-        PaymentReadModel model = new PaymentReadModel
+        PaymentReadModel model = new()
         {
             PaymentId = e.PaymentId,
             PaymentNumber = e.PaymentNumber,

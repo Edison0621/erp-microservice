@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ErpSystem.IntegrationTests;
 
-public class HRToIdentityTests : IntegrationTestBase
+public class HrToIdentityTests : IntegrationTestBase
 {
     [Fact]
     public async Task EmployeeLifecycle_ShouldManageIdentityAccount()
@@ -27,10 +27,10 @@ public class HRToIdentityTests : IntegrationTestBase
             // But we can create two buses or use a more flexible one.
             // For now, I'll hire, then terminated. I'll switch the endpoint if needed or use a multi-endpoint bus.
             
-            TestEventBus testEventBus = new TestEventBus(identityClient, "/api/v1/identity/integration/employee-hired");
-            hrApp = this.CreateHRApp(testEventBus);
+            TestEventBus testEventBus = new(identityClient, "/api/v1/identity/integration/employee-hired");
+            hrApp = this.CreateHrApp(testEventBus);
 
-            IMediator mediatorHR = hrApp.Services.GetRequiredService<IMediator>();
+            IMediator mediatorHr = hrApp.Services.GetRequiredService<IMediator>();
             IMediator mediatorIdentity = identityApp.Services.GetRequiredService<IMediator>();
             
             Guid employeeId = Guid.NewGuid(); // We'll bypass Guid.NewGuid() in Hire to use a controlled one if needed, 
@@ -40,7 +40,7 @@ public class HRToIdentityTests : IntegrationTestBase
             // I'll use the returned Id.
             
             // 3. Hire Employee
-            Guid hiredId = await mediatorHR.Send(new HireEmployeeCommand(
+            Guid hiredId = await mediatorHr.Send(new HireEmployeeCommand(
                 "John Doe", "Male", new DateTime(1990, 1, 1), "ID", "123456789",
                 DateTime.UtcNow, EmploymentType.FullTime, "COMP-1", "DEPT-1", "POS-1",
                 "", "CC-1", "john.doe@example.com"
@@ -61,12 +61,12 @@ public class HRToIdentityTests : IntegrationTestBase
             // 5. Setup Terminated Bus (Re-create HR App with new bus or use a smarter bus)
             // Re-creating is easiest for this test.
             hrApp.Dispose();
-            TestEventBus termEventBus = new TestEventBus(identityClient, "/api/v1/identity/integration/employee-terminated");
-            hrApp = this.CreateHRApp(termEventBus);
-            mediatorHR = hrApp.Services.GetRequiredService<IMediator>();
+            TestEventBus termEventBus = new(identityClient, "/api/v1/identity/integration/employee-terminated");
+            hrApp = this.CreateHrApp(termEventBus);
+            mediatorHr = hrApp.Services.GetRequiredService<IMediator>();
 
             // 6. Terminate Employee
-            await mediatorHR.Send(new TerminateEmployeeCommand(
+            await mediatorHr.Send(new TerminateEmployeeCommand(
                 hiredId, DateTime.UtcNow, "RESIGNATION", "Leaving for better opportunity"
             ));
 

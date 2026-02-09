@@ -35,14 +35,15 @@ public class SalesOrderCommandHandler(EventStoreRepository<SalesOrder> repo, IEv
     {
         SalesOrder? so = await repo.LoadAsync(request.OrderId);
         if (so == null) throw new KeyNotFoundException("Order not found");
-        
+
         so.Confirm();
         await repo.SaveAsync(so);
 
         // Publish Integration Event for Inventory Reservation
-        SalesIntegrationEvents.OrderConfirmedIntegrationEvent integrationEvent = new SalesIntegrationEvents.OrderConfirmedIntegrationEvent(
+        SalesIntegrationEvents.OrderConfirmedIntegrationEvent integrationEvent = new(
             so.Id,
             so.SoNumber,
+            so.TotalAmount,
             so.Lines.Select(l => new SalesIntegrationEvents.OrderConfirmedItem(
                 l.MaterialId,
                 request.WarehouseId,
@@ -58,7 +59,7 @@ public class SalesOrderCommandHandler(EventStoreRepository<SalesOrder> repo, IEv
     {
         SalesOrder? so = await repo.LoadAsync(request.OrderId);
         if (so == null) throw new KeyNotFoundException("Order not found");
-        
+
         so.Cancel(request.Reason);
         await repo.SaveAsync(so);
         return true;

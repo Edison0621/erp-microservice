@@ -199,7 +199,7 @@ public class Opportunity : AggregateRoot<Guid>
         string? assignedToUserId = null,
         string? description = null)
     {
-        Opportunity opportunity = new Opportunity();
+        Opportunity opportunity = new();
         opportunity.ApplyChange(new OpportunityCreatedEvent(
             id, opportunityNumber, name, leadId, customerId, customerName,
             estimatedValue, currency, expectedCloseDate, priority,

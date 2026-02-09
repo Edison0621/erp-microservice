@@ -83,7 +83,7 @@ public class SalesOrder : AggregateRoot<Guid>
         string currency, 
         List<SalesOrderLine> lines)
     {
-        SalesOrder so = new SalesOrder();
+        SalesOrder so = new();
         so.ApplyChange(new SalesOrderCreatedEvent(id, soNumber, customerId, customerName, orderDate, currency, lines));
         return so;
     }

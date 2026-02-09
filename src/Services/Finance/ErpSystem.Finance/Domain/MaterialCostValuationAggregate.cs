@@ -22,7 +22,7 @@ public class MaterialCostValuation : AggregateRoot<Guid>
         string warehouseId,
         decimal initialCost)
     {
-        MaterialCostValuation valuation = new MaterialCostValuation();
+        MaterialCostValuation valuation = new();
         valuation.ApplyChange(new MaterialCostValuationCreatedEvent(
             id,
             tenantId,

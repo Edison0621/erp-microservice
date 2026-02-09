@@ -6,7 +6,7 @@ using MediatR;
 
 namespace ErpSystem.IntegrationTests;
 
-public class GLTests : IntegrationTestBase
+public class GlTests : IntegrationTestBase
 {
     [Fact]
     public async Task JournalEntry_ShouldUpdateTrialBalance()

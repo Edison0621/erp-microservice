@@ -108,7 +108,7 @@ public class Material : AggregateRoot<Guid>
         Guid categoryId, 
         CostDetail initialCost)
     {
-        Material material = new Material();
+        Material material = new();
         material.ApplyChange(new MaterialCreatedEvent(id, code, name, type, uom, categoryId, initialCost));
         return material;
     }

@@ -140,3 +140,17 @@ public class FinanceCommandHandler(EventStoreRepository<Invoice> invoiceRepo, Ev
         await invoiceRepo.SaveAsync(invoice);
     }
 }
+
+public record ReconcileStatementCommand(Guid StatementId) : IRequest;
+
+public class StatementCommandHandler(EventStoreRepository<Statement> repo) :
+    IRequestHandler<ReconcileStatementCommand>
+{
+    public async Task Handle(ReconcileStatementCommand request, CancellationToken ct)
+    {
+        Statement? statement = await repo.LoadAsync(request.StatementId);
+        if (statement == null) throw new KeyNotFoundException("Statement not found");
+        statement.Reconcile();
+        await repo.SaveAsync(statement);
+    }
+}

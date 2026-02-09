@@ -24,7 +24,7 @@ public class SalesToInventoryTests : IntegrationTestBase
             HttpClient inventoryClient = inventoryApp.CreateClient();
             
             // Route Sales events to Inventory
-            TestEventBus testEventBus = new TestEventBus(inventoryClient, "/api/v1/inventory/integration/order-confirmed");
+            TestEventBus testEventBus = new(inventoryClient, "/api/v1/inventory/integration/order-confirmed");
             salesApp = this.CreateSalesApp(testEventBus);
 
             IMediator mediatorSales = salesApp.Services.GetRequiredService<IMediator>();

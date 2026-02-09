@@ -1,6 +1,9 @@
 using MediatR;
 using ErpSystem.Finance.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using ErpSystem.BuildingBlocks.Domain;
+using ErpSystem.BuildingBlocks.Common;
+using ErpSystem.Finance.Domain;
 
 namespace ErpSystem.Finance.Application;
 
@@ -56,7 +59,7 @@ public class FinanceQueryHandler(FinanceReadDbContext context) :
     {
         DateTime today = DateTime.UtcNow.Date;
         List<InvoiceReadModel> unpaidInvoices = await context.Invoices.AsNoTracking()
-            .Where(x => x.Status == (int)Domain.InvoiceStatus.Issued || x.Status == (int)Domain.InvoiceStatus.PartiallyPaid)
+            .Where(x => x.Status == (int)InvoiceStatus.Issued || x.Status == (int)InvoiceStatus.PartiallyPaid)
             .ToListAsync(ct);
 
         List<AgingBucket> buckets =
@@ -77,7 +80,7 @@ public class FinanceQueryHandler(FinanceReadDbContext context) :
         // For now, implementing a basic version similar to AgingReport but filtering if needed.
         DateTime today = request.AsOf.Date;
         IQueryable<InvoiceReadModel> query = context.Invoices.AsNoTracking()
-           .Where(x => x.Status == (int)Domain.InvoiceStatus.Issued || x.Status == (int)Domain.InvoiceStatus.PartiallyPaid);
+           .Where(x => x.Status == (int)InvoiceStatus.Issued || x.Status == (int)InvoiceStatus.PartiallyPaid);
 
         if (!string.IsNullOrEmpty(request.PartyId))
             query = query.Where(x => x.PartyId == request.PartyId);
@@ -100,7 +103,7 @@ public class FinanceQueryHandler(FinanceReadDbContext context) :
     {
         DateTime today = request.AsOf.Date;
         IQueryable<InvoiceReadModel> query = context.Invoices.AsNoTracking()
-           .Where(x => (x.Status == (int)Domain.InvoiceStatus.Issued || x.Status == (int)Domain.InvoiceStatus.PartiallyPaid) && x.DueDate < today);
+           .Where(x => (x.Status == (int)InvoiceStatus.Issued || x.Status == (int)InvoiceStatus.PartiallyPaid) && x.DueDate < today);
 
         if (!string.IsNullOrEmpty(request.PartyId))
             query = query.Where(x => x.PartyId == request.PartyId);
@@ -115,10 +118,10 @@ public class FinanceQueryHandler(FinanceReadDbContext context) :
             .GroupBy(x => 1)
             .Select(g => new
             {
-                TotalAR = g.Where(x => x.Type == (int)Domain.InvoiceType.AccountsReceivable).Sum(x => x.OutstandingAmount),
-                TotalAP = g.Where(x => x.Type == (int)Domain.InvoiceType.AccountsPayable).Sum(x => x.OutstandingAmount),
-                OrderCount = g.Count(x => x.Type == (int)Domain.InvoiceType.AccountsReceivable && x.Status != (int)Domain.InvoiceStatus.Draft), // AR Orders
-                ReconciledCount = g.Count(x => x.Status == (int)Domain.InvoiceStatus.FullyPaid)
+                TotalAR = g.Where(x => x.Type == (int)InvoiceType.AccountsReceivable).Sum(x => x.OutstandingAmount),
+                TotalAP = g.Where(x => x.Type == (int)InvoiceType.AccountsPayable).Sum(x => x.OutstandingAmount),
+                OrderCount = g.Count(x => x.Type == (int)InvoiceType.AccountsReceivable && x.Status != (int)InvoiceStatus.Draft), // AR Orders
+                ReconciledCount = g.Count(x => x.Status == (int)InvoiceStatus.FullyPaid)
             })
             .FirstOrDefaultAsync(ct);
 
@@ -136,15 +139,15 @@ public class FinanceQueryHandler(FinanceReadDbContext context) :
             })
             .ToListAsync(ct);
 
-        List<MonthlyTrend> monthlyTrends = new();
+        List<MonthlyTrend> monthlyTrends = [];
         for (int i = 0; i < 6; i++)
         {
             DateTime month = DateTime.UtcNow.AddMonths(-i);
             var mTrends = trends.Where(t => t.Year == month.Year && t.Month == month.Month).ToList();
             monthlyTrends.Add(new MonthlyTrend(
                 $"{month.Year}-{month.Month:00}",
-                mTrends.Where(t => t.Direction == (int)Domain.PaymentDirection.Incoming).Sum(t => t.Amount),
-                mTrends.Where(t => t.Direction == (int)Domain.PaymentDirection.Outgoing).Sum(t => t.Amount)
+                mTrends.Where(t => t.Direction == (int)PaymentDirection.Incoming).Sum(t => t.Amount),
+                mTrends.Where(t => t.Direction == (int)PaymentDirection.Outgoing).Sum(t => t.Amount)
             ));
         }
 
@@ -169,4 +172,90 @@ public record FinancialDashboardStats(
 );
 
 public record MonthlyTrend(string Month, decimal Incoming, decimal Outgoing);
+
+public record GetStatementQuery(Guid StatementId) : IRequest<StatementDto?>;
+
+public record GetStatementByPeriodQuery(string SupplierId, string Period) : IRequest<StatementDto?>;
+
+public record StatementDto(
+    Guid StatementId,
+    string SupplierId,
+    string Currency,
+    string Status,
+    decimal TotalAmount,
+    List<StatementLineDto> Lines
+);
+
+public record StatementLineDto(
+    Guid SourceId,
+    string SourceNumber,
+    DateTime Date,
+    string Type,
+    string MaterialId,
+    string Description,
+    decimal Quantity,
+    decimal UnitPrice,
+    decimal Amount
+);
+
+public class StatementQueryHandler(EventStoreRepository<Statement> repo) :
+    IRequestHandler<GetStatementQuery, StatementDto?>
+{
+    public async Task<StatementDto?> Handle(GetStatementQuery request, CancellationToken ct)
+    {
+        Statement? stmt = await repo.LoadAsync(request.StatementId);
+        if (stmt == null) return null;
+
+        return new StatementDto(
+            stmt.Id,
+            stmt.SupplierId,
+            stmt.Currency,
+            stmt.Status.ToString(),
+            stmt.TotalAmount,
+            stmt.Lines.Select(l => new StatementLineDto(
+                l.SourceId,
+                l.SourceNumber,
+                l.Date,
+                l.Type.ToString(),
+                l.MaterialId,
+                l.Description,
+                l.Quantity,
+                l.UnitPrice,
+                l.Amount
+            )).ToList()
+        );
+    }
+}
+
+public class StatementByPeriodQueryHandler(EventStoreRepository<Statement> repo) :
+    IRequestHandler<GetStatementByPeriodQuery, StatementDto?>
+{
+    public async Task<StatementDto?> Handle(GetStatementByPeriodQuery request, CancellationToken ct)
+    {
+        string statementIdStr = $"{request.SupplierId}_{request.Period}";
+        Guid statementId = GuidHelper.CreateDeterministicGuid(statementIdStr);
+
+        Statement? stmt = await repo.LoadAsync(statementId);
+        if (stmt == null) return null;
+
+        return new StatementDto(
+            stmt.Id,
+            stmt.SupplierId,
+            stmt.Currency,
+            stmt.Status.ToString(),
+            stmt.TotalAmount,
+            stmt.Lines.Select(l => new StatementLineDto(
+                l.SourceId,
+                l.SourceNumber,
+                l.Date,
+                l.Type.ToString(),
+                l.MaterialId,
+                l.Description,
+                l.Quantity,
+                l.UnitPrice,
+                l.Amount
+            )).ToList()
+        );
+    }
+}
 

@@ -38,7 +38,7 @@ public class Shipment : AggregateRoot<Guid>
         string warehouseId, 
         List<ShipmentLine> lines)
     {
-        Shipment shipment = new Shipment();
+        Shipment shipment = new();
         shipment.ApplyChange(new ShipmentCreatedEvent(id, shipmentNumber, salesOrderId, soNumber, shippedDate, shippedBy, warehouseId, lines));
         return shipment;
     }

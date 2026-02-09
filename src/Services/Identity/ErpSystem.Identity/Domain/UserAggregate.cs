@@ -71,7 +71,7 @@ public class User : AggregateRoot<Guid>
 
     public static User Create(Guid id, string username, string email, string displayName, string passwordHash)
     {
-        User user = new User();
+        User user = new();
         user.ApplyChange(new UserCreatedEvent(id, username, email, displayName, passwordHash));
         return user;
     }

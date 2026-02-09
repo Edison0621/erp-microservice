@@ -199,7 +199,7 @@ public class Campaign : AggregateRoot<Guid>
         if (endDate <= startDate)
             throw new ArgumentException("End date must be after start date");
 
-        Campaign campaign = new Campaign();
+        Campaign campaign = new();
         campaign.ApplyChange(new CampaignCreatedEvent(
             id, campaignNumber, name, type, startDate, endDate,
             budget, currency, targetAudience, description, createdByUserId));

@@ -14,17 +14,17 @@ public static class JwtTokenGenerator
 
     public static string Generate(Guid userId, string username)
     {
-        SymmetricSecurityKey key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SecretKey));
-        SigningCredentials creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        SymmetricSecurityKey key = new(Encoding.UTF8.GetBytes(SecretKey));
+        SigningCredentials creds = new(key, SecurityAlgorithms.HmacSha256);
 
         Claim[] claims =
         [
-            new Claim(JwtRegisteredClaimNames.Sub, userId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Name, username),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Sub, userId.ToString()),
+            new(JwtRegisteredClaimNames.Name, username),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         ];
 
-        JwtSecurityToken token = new JwtSecurityToken(
+        JwtSecurityToken token = new(
             issuer: Issuer,
             audience: Audience,
             claims: claims,

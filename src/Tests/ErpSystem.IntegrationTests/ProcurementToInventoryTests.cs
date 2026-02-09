@@ -22,7 +22,7 @@ public class ProcurementToInventoryTests : IntegrationTestBase
             inventoryApp = this.CreateInventoryApp();
             HttpClient inventoryClient = inventoryApp.CreateClient();
             
-            TestEventBus testEventBus = new TestEventBus(inventoryClient, "/api/v1/inventory/integration/goods-received");
+            TestEventBus testEventBus = new(inventoryClient, "/api/v1/inventory/integration/goods-received");
             procurementApp = this.CreateProcurementApp(testEventBus);
 
             IMediator mediatorProcurement = procurementApp.Services.GetRequiredService<IMediator>();

@@ -34,7 +34,7 @@ public class ReorderingRule : AggregateRoot<Guid>
         if (maxQuantity <= minQuantity)
             throw new InvalidOperationException("Max quantity must be greater than min quantity");
 
-        ReorderingRule rule = new ReorderingRule();
+        ReorderingRule rule = new();
         rule.ApplyChange(new ReorderingRuleCreatedEvent(
             id,
             tenantId,

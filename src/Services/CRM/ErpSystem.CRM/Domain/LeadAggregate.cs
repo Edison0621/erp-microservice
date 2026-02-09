@@ -191,7 +191,7 @@ public class Lead : AggregateRoot<Guid>
         string? assignedToUserId = null,
         string? notes = null)
     {
-        Lead lead = new Lead();
+        Lead lead = new();
         lead.ApplyChange(new LeadCreatedEvent(
             id, leadNumber, contact, company, source, sourceDetails, assignedToUserId, notes));
         return lead;

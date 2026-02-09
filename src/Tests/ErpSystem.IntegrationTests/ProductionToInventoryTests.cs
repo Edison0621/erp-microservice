@@ -15,24 +15,24 @@ public class ProductionToInventoryTests : IntegrationTestBase
         WebApplicationFactory<Inventory.Program>? inventoryApp = null;
         WebApplicationFactory<Production.Program>? productionApp = null;
 
-        try 
+        try
         {
             // 1. Setup Apps
             inventoryApp = this.CreateInventoryApp();
             HttpClient inventoryClient = inventoryApp.CreateClient();
-            
+
             // Route Production Material Issued events to Inventory
-            TestEventBus testEventBus = new TestEventBus(inventoryClient, "/api/v1/inventory/integration/production-material-issued");
+            TestEventBus testEventBus = new(inventoryClient, "/api/v1/inventory/integration/production-material-issued");
             productionApp = this.CreateProductionApp(testEventBus);
 
             IMediator mediatorProduction = productionApp.Services.GetRequiredService<IMediator>();
             IMediator mediatorInventory = inventoryApp.Services.GetRequiredService<IMediator>();
-            
+
             string materialId = "RM-101";
             string warehouseId = "WH-PROD";
             decimal initialStock = 100m;
             decimal consumptionQuantity = 30m;
-            
+
             // 2. Initialize Stock in Inventory
             await mediatorInventory.Send(new ReceiveStockCommand(
                 warehouseId, "DEFAULT_BIN", materialId, initialStock, 10m, "INITIAL", "INIT-001", "TESTER"
@@ -40,7 +40,7 @@ public class ProductionToInventoryTests : IntegrationTestBase
 
             // 3. Create and Release Production Order
             Guid prdId = await mediatorProduction.Send(new CreateProductionOrderCommand(
-                "FG-101", "FG101", "Finished Good 101", 50m
+                "TENANT-001", "FG-101", "FG101", "Finished Good 101", 50m
             ));
             await mediatorProduction.Send(new ReleaseProductionOrderCommand(prdId));
 
@@ -50,7 +50,7 @@ public class ProductionToInventoryTests : IntegrationTestBase
             ));
 
             // 5. Verify in Inventory
-            await Task.Delay(500); 
+            await Task.Delay(500);
 
             InventoryItemReadModel? stockInfo = await mediatorInventory.Send(new GetInventoryItemQuery(warehouseId, "DEFAULT_BIN", materialId));
             Assert.NotNull(stockInfo);
@@ -75,26 +75,26 @@ public class ProductionToInventoryTests : IntegrationTestBase
         WebApplicationFactory<Inventory.Program>? inventoryApp = null;
         WebApplicationFactory<Production.Program>? productionApp = null;
 
-        try 
+        try
         {
             // 1. Setup Apps
             inventoryApp = this.CreateInventoryApp();
             HttpClient inventoryClient = inventoryApp.CreateClient();
-            
+
             // Route Production Completed events to Inventory
-            TestEventBus testEventBus = new TestEventBus(inventoryClient, "/api/v1/inventory/integration/production-completed");
+            TestEventBus testEventBus = new(inventoryClient, "/api/v1/inventory/integration/production-completed");
             productionApp = this.CreateProductionApp(testEventBus);
 
             IMediator mediatorProduction = productionApp.Services.GetRequiredService<IMediator>();
             IMediator mediatorInventory = inventoryApp.Services.GetRequiredService<IMediator>();
-            
+
             string fgMaterialId = "FG-101";
             string warehouseId = "WH-FG";
             decimal prdQuantity = 50m;
-            
+
             // 2. Create and Release Production Order
             Guid prdId = await mediatorProduction.Send(new CreateProductionOrderCommand(
-                fgMaterialId, "FG101", "Finished Good 101", prdQuantity
+                "TENANT-001", fgMaterialId, "FG101", "Finished Good 101", prdQuantity
             ));
             await mediatorProduction.Send(new ReleaseProductionOrderCommand(prdId));
 
@@ -104,7 +104,7 @@ public class ProductionToInventoryTests : IntegrationTestBase
             ));
 
             // 4. Verify in Inventory
-            await Task.Delay(500); 
+            await Task.Delay(500);
 
             InventoryItemReadModel? stockInfo = await mediatorInventory.Send(new GetInventoryItemQuery(warehouseId, "DEFAULT_BIN", fgMaterialId));
             Assert.NotNull(stockInfo);

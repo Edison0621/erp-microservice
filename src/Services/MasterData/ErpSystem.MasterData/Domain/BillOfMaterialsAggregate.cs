@@ -70,7 +70,7 @@ public class BillOfMaterials : AggregateRoot<Guid>
         string version, 
         DateTime effectiveDate)
     {
-        BillOfMaterials bom = new BillOfMaterials();
+        BillOfMaterials bom = new();
         bom.ApplyChange(new BomCreatedEvent(id, parentMaterialId, name, version, effectiveDate));
         return bom;
     }

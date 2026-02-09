@@ -23,7 +23,7 @@ public class DemandForecast : AggregateRoot<Guid>
         DateTime forecastDate,
         double confidenceScore)
     {
-        DemandForecast forecast = new DemandForecast();
+        DemandForecast forecast = new();
         forecast.ApplyChange(new DemandForecastCreatedEvent(
             id,
             tenantId,

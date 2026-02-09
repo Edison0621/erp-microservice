@@ -70,7 +70,7 @@ public class EventStore(DbContext context, IPublisher publisher, IEventBus event
         foreach (IDomainEvent @event in changes)
         {
             version++;
-            EventStream stream = new EventStream
+            EventStream stream = new()
             {
                 AggregateId = aggregate.Id,
                 AggregateType = typeof(TAggregate).Name,
@@ -107,7 +107,7 @@ public class EventStore(DbContext context, IPublisher publisher, IEventBus event
 
         if (!streams.Any()) return null;
 
-        TAggregate aggregate = new TAggregate();
+        TAggregate aggregate = new();
         IEnumerable<IDomainEvent> history = streams.Select(s =>
         {
             Type type = eventTypeResolver(s.EventType);

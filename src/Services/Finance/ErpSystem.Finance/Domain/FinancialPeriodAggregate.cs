@@ -32,7 +32,7 @@ public class FinancialPeriod : AggregateRoot<Guid>
 
     public static FinancialPeriod Define(Guid id, int year, int number, DateTime start, DateTime end)
     {
-        FinancialPeriod period = new FinancialPeriod();
+        FinancialPeriod period = new();
         period.ApplyChange(new FinancialPeriodDefinedEvent(id, year, number, start, end));
         return period;
     }

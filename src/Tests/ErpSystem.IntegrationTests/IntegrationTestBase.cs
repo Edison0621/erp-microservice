@@ -18,7 +18,7 @@ namespace ErpSystem.IntegrationTests;
 
 public class IntegrationTestBase
 {
-    protected WebApplicationFactory<HR.Program> CreateHRApp(IEventBus mockEventBus)
+    protected WebApplicationFactory<HR.Program> CreateHrApp(IEventBus mockEventBus)
     {
         return new WebApplicationFactory<HR.Program>()
             .WithWebHostBuilder(builder =>

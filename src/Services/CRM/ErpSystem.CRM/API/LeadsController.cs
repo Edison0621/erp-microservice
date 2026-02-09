@@ -81,7 +81,7 @@ public class LeadsController(EventStoreRepository<Lead> repository, CrmReadDbCon
     {
         string leadNumber = $"LD-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString()[..8].ToUpper()}";
         
-        ContactInfo contact = new ContactInfo(
+        ContactInfo contact = new(
             request.FirstName,
             request.LastName,
             request.Email,

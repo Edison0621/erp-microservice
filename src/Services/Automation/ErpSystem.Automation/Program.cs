@@ -29,7 +29,7 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Autom
 builder.Services.AddScoped<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 
 // Register the main EventStore
-builder.Services.AddScoped<IEventStore>(sp => 
+builder.Services.AddScoped<IEventStore>(sp =>
     new EventStore(
         sp.GetRequiredService<AutomationDbContext>(),
         sp.GetRequiredService<IPublisher>(),
@@ -82,7 +82,7 @@ namespace ErpSystem.Automation.Infrastructure
                 b.HasKey(e => new { e.AggregateId, e.Version });
                 b.Property(e => e.Payload).HasColumnType("jsonb");
             });
-            
+
             modelBuilder.Entity<AutomationRuleReadModel>().HasKey(x => x.Id);
         }
     }
@@ -97,23 +97,42 @@ namespace ErpSystem.Automation.Infrastructure
 
     public class AutomationRuleRepository(AutomationDbContext context, IEventStore eventStore) : IAutomationRuleRepository
     {
-        private readonly AutomationDbContext _context = context;
-        private readonly IEventStore _eventStore = eventStore;
-
         public async Task<List<AutomationRule>> GetActiveRulesByEventType(string eventType)
         {
-            //TODO In a real system, we'd query the read model then load aggregates
-            return [];
+            List<Guid> ruleIds = await context.Rules
+                .Where(r => r.TriggerEventType == eventType && r.IsActive)
+                .Select(r => r.Id)
+                .ToListAsync();
+
+            List<AutomationRule> rules = [];
+            foreach (Guid id in ruleIds)
+            {
+                AutomationRule? rule = await eventStore.LoadAggregateAsync<AutomationRule>(id);
+                if (rule != null)
+                {
+                    rules.Add(rule);
+                }
+            }
+
+            return rules;
         }
     }
 
-    public class EmailService : IEmailService 
+    public class EmailService(ILogger<EmailService> logger) : IEmailService
     {
-        public Task SendEmailAsync(string to, string subject, string body) => Task.CompletedTask;
+        public Task SendEmailAsync(string to, string subject, string body)
+        {
+            logger.LogInformation("Sending Email to {To}: {Subject}\n{Body}", to, subject, body);
+            return Task.CompletedTask;
+        }
     }
 
-    public class NotificationService : INotificationService
+    public class NotificationService(ILogger<NotificationService> logger) : INotificationService
     {
-        public Task SendNotificationAsync(string channel, string message) => Task.CompletedTask;
+        public Task SendNotificationAsync(string channel, string message)
+        {
+            logger.LogInformation("Sending {Channel} Notification: {Message}", channel, message);
+            return Task.CompletedTask;
+        }
     }
 }

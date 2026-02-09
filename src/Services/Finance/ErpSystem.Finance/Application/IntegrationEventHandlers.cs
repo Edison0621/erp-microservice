@@ -14,15 +14,15 @@ public class SalesIntegrationEventHandler(IMediator mediator) : INotificationHan
             x.MaterialId,
             x.MaterialName,
             x.Quantity,
-            100, // Price would ideally come from SaleOrder, using 100 as placeholder
+            x.UnitPrice,
             0.13m // 13% TaxRate
         )).ToList();
 
         await mediator.Send(new CreateInvoiceCommand(
             invoiceNumber,
             InvoiceType.AccountsReceivable,
-            "CUSTOMER-ID", // Ideally lookup from SalesOrder
-            "CUSTOMER-NAME",
+            n.CustomerId,
+            n.CustomerName,
             DateTime.UtcNow,
             DateTime.UtcNow.AddDays(30),
             "USD",

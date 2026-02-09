@@ -25,7 +25,7 @@ public class QualityPoint : AggregateRoot<Guid>
         string instructions,
         bool isMandatory)
     {
-        QualityPoint qp = new QualityPoint();
+        QualityPoint qp = new();
         qp.ApplyChange(new QualityPointCreatedEvent(
             id,
             tenantId,

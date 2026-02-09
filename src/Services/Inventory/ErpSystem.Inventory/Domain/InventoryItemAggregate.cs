@@ -108,7 +108,7 @@ public class InventoryItem : AggregateRoot<Guid>
 
     public static InventoryItem Create(Guid id, string warehouseId, string binId, string materialId)
     {
-        InventoryItem item = new InventoryItem();
+        InventoryItem item = new();
         item.ApplyChange(new InventoryItemCreatedEvent(id, warehouseId, binId, materialId));
         return item;
     }

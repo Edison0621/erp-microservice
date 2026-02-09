@@ -25,7 +25,7 @@ public static class DistributedCacheExtensions
         TimeSpan? slidingExpiration = null,
         CancellationToken cancellationToken = default) where T : class
     {
-        DistributedCacheEntryOptions options = new DistributedCacheEntryOptions
+        DistributedCacheEntryOptions options = new()
         {
             AbsoluteExpirationRelativeToNow = absoluteExpiration,
             SlidingExpiration = slidingExpiration

@@ -25,7 +25,7 @@ public class AutomationRule : AggregateRoot<Guid>
         string triggerEventType,
         AutomationTriggerCondition? condition = null)
     {
-        AutomationRule rule = new AutomationRule();
+        AutomationRule rule = new();
         rule.ApplyChange(new AutomationRuleCreatedEvent(
             id,
             tenantId,

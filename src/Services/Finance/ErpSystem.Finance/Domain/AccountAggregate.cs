@@ -52,7 +52,7 @@ public class Account : AggregateRoot<Guid>
     // Constructor for creating new account
     public static Account Create(Guid id, string code, string name, AccountType type, AccountClass accountClass, Guid? parentId, BalanceType balanceType, string currency)
     {
-        Account account = new Account();
+        Account account = new();
         account.ApplyChange(new AccountCreatedEvent(id, code, name, type, accountClass, parentId, balanceType, currency));
         return account;
     }

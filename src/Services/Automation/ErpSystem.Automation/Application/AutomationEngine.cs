@@ -178,7 +178,7 @@ public class ActionExecutor(
         string payload = action.Parameters["payload"];
         
         HttpClient client = httpClientFactory.CreateClient();
-        StringContent content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
+        StringContent content = new(payload, System.Text.Encoding.UTF8, "application/json");
         HttpResponseMessage response = await client.PostAsync(url, content);
         
         response.EnsureSuccessStatusCode();

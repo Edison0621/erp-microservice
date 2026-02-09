@@ -129,7 +129,7 @@ public class Timesheet : AggregateRoot<Guid>
         DateTime weekStartDate)
     {
         DateTime weekEndDate = weekStartDate.AddDays(6);
-        Timesheet timesheet = new Timesheet();
+        Timesheet timesheet = new();
         timesheet.ApplyChange(new TimesheetCreatedEvent(
             id, timesheetNumber, projectId, userId, weekStartDate, weekEndDate));
         return timesheet;
